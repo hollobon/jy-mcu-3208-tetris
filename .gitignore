@@ -1,0 +1,10 @@
+# GNU GLOBAL
+
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+
+# Emacs
+*~
+\#*#

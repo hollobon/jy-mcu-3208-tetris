@@ -1,0 +1,14 @@
+OPT_DEFS += -DTIC_LENGTH_MS=75
+OPT_DEFS += -DBINARY_SECONDS
+#OPT_DEFS += -DBINARY_SECONDS_DOUBLE
+#OPT_DEFS += -DPHOTODIODE
+
+ARCH = AVR8
+
+MCU = atmega8
+
+TARGET = tetris
+
+SRC = tetris.c ht1632c.c
+
+include rules.mk

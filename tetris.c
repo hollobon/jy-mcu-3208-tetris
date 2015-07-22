@@ -1,0 +1,197 @@
+/* Tetris-like falling blocks game for JY-MCY 3208 "Lattice Clock"
+ * 
+ * Copyright (C) Pete Hollobon 2015
+ */
+
+#define F_CPU 1600000
+
+#include <avr/io.h>
+#include <avr/sleep.h>
+#include <util/delay.h>
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+
+#include "ht1632c.h"
+#include "tetris.h"
+
+#define key1 ((PIND & (1 << 7)) == 0)
+#define key2 ((PIND & (1 << 6)) == 0)
+#define key3 ((PIND & (1 << 5)) == 0)
+
+void set_up_keys(void)
+{
+    /* Set high 3 bits of port D as input */
+    DDRD &= 0b00011111;
+
+    /* Turn on pull-up resistors on high 3 bits */
+    PORTD |= 0b11100000;
+}
+
+/* Copy the source board to the destination, overlaying shape at the row specified */
+void overlay_shape(uint8_t src[32], uint8_t dest[32], uint8_t shape[4], uint8_t shape_top)
+{
+    int n;
+    for (n = 0; n < 32; n++) {
+        if (n >= shape_top && n - shape_top < 4)
+            dest[n] = src[n] | shape[n - shape_top];
+        else
+            dest[n] = src[n];
+    }
+}
+
+/* Offset a shape to the right by a positive number of pixels */
+void offset_shape(uint8_t shape[4], uint8_t n)
+{
+    int row;
+    for (row = 0; row < 4; row++)
+        shape[row] >>= n;
+}
+
+/* Test if overlaying the shape on the board at the specified line would
+ * result in a collision
+ */
+bool test_collision(uint8_t board[32], uint8_t shape[4], uint8_t line)
+{
+    uint8_t shape_length = 0;
+    uint8_t n;
+
+    while (shape_length < 4 && shape[shape_length])
+        shape_length++;
+
+    if (line + shape_length > 32)
+        return true;
+
+    for (n = 0; n < shape_length; n++) {
+        if (board[line + n] & shape[n])
+            return true;
+    }
+    return false;
+}
+
+/* Copy the source board to the destination, omitting any complete rows */
+void collapse_full_rows(uint8_t src[32], uint8_t dest[32])
+{
+    int src_index, dest_index;
+
+    dest_index = 31;
+    for (src_index = 31; src_index >= 0; src_index--) {
+        if (src[src_index] != 0xff)
+            dest[dest_index--] = src[src_index];
+    }
+    while (dest_index >= 0)
+        dest[dest_index--] = 0;
+}
+
+/* Get the "width" of a shape: the column number of the rightmost set pixel */
+uint8_t get_shape_width(uint8_t shape[4])
+{
+    uint8_t min = 8;
+    uint8_t row, bit;
+    for (row = 0; row < 4; row++) {
+        for (bit = 0; bit < 8; bit++) {
+            if (shape[row] & (1 << bit)) {
+                if (bit < min)
+                    min = bit;
+                break;
+            }
+        }
+    }
+    return 8 - min;
+}
+
+int main(void)
+{
+    uint8_t board[32];
+    uint8_t display_board[32];
+    uint8_t shape_top;
+    uint8_t shape_offset, proposed_shape_offset;
+    uint8_t shape_rotation, proposed_shape_rotation;
+    uint8_t shape_selection;
+    uint8_t shape_width;
+    uint8_t shape[4], proposed_shape[4];
+    bool update_shape;
+    int delay_loop_count;
+
+    HTpinsetup();
+    HTsetup();
+    set_up_keys();
+    HTbrightness(1);
+
+    memset(board, 0, 32);
+
+    shape_top = 0;
+    shape_offset = 3;
+    shape_rotation = rand() % 4;
+    shape_selection = rand() % 7;
+    shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+    memcpy(shape, shapes[shape_selection][shape_rotation], 4);
+
+    while (1) {
+        if (test_collision(board, shape, shape_top + 1)) {
+            if (shape_top == 0)
+                break;
+
+            collapse_full_rows(display_board, board);
+
+            shape_top = 0;
+            shape_offset = 3;
+            shape_rotation = rand() % 4;
+            shape_selection = rand() % 7;
+            shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+            memcpy(shape, shapes[shape_selection][shape_rotation], 4);
+            offset_shape(shape, shape_offset);
+        }
+        else {
+            delay_loop_count = 0;
+
+            while (delay_loop_count++ < 5) {
+                update_shape = false;
+                if (key3) {
+                    if (shape_offset > 0) {
+                        proposed_shape_offset = shape_offset - 1;
+                        proposed_shape_rotation = shape_rotation;
+                    }
+                    update_shape = true;
+                }
+                else if (key1) {
+                    if (shape_offset + shape_width < 8) {
+                        proposed_shape_offset = shape_offset + 1;
+                        proposed_shape_rotation = shape_rotation;
+                    }
+                    update_shape = true;
+                }
+                else if (key2) {
+                    proposed_shape_rotation = (shape_rotation + 1) % 4;
+                    proposed_shape_offset = shape_offset;
+                    if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
+                        update_shape = true;
+                }
+
+                if (update_shape) {
+                    memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
+                    offset_shape(proposed_shape, proposed_shape_offset);
+
+                    if (!test_collision(board, proposed_shape, shape_top)) {
+                        shape_offset = proposed_shape_offset;
+                        shape_rotation = proposed_shape_rotation;
+                        memcpy(shape, proposed_shape, 4);
+                        shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+                    }
+    
+                    overlay_shape(board, display_board, shape, shape_top);
+                    memcpy(leds, display_board, 32);
+                    HTsendscreen();
+                }
+                _delay_ms(100);
+            }
+
+            shape_top++;
+        }
+        overlay_shape(board, display_board, shape, shape_top);
+        memcpy(leds, display_board, 32);
+        HTsendscreen();
+    }
+}
