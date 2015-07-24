@@ -105,7 +105,6 @@ uint8_t get_shape_width(uint8_t shape[4])
 int main(void)
 {
     uint8_t board[32];
-    uint8_t display_board[32];
     uint8_t shape_top;
     uint8_t shape_offset, proposed_shape_offset;
     uint8_t shape_rotation, proposed_shape_rotation;
@@ -134,7 +133,7 @@ int main(void)
             if (shape_top == 0)
                 break;
 
-            collapse_full_rows(display_board, board);
+            collapse_full_rows(leds, board);
 
             shape_top = 0;
             shape_offset = 3;
@@ -181,8 +180,7 @@ int main(void)
                         shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
                     }
     
-                    overlay_shape(board, display_board, shape, shape_top);
-                    memcpy(leds, display_board, 32);
+                    overlay_shape(board, leds, shape, shape_top);
                     HTsendscreen();
                 }
                 _delay_ms(100);
@@ -190,8 +188,7 @@ int main(void)
 
             shape_top++;
         }
-        overlay_shape(board, display_board, shape, shape_top);
-        memcpy(leds, display_board, 32);
+        overlay_shape(board, leds, shape, shape_top);
         HTsendscreen();
     }
 }
