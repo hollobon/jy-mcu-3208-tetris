@@ -3,10 +3,12 @@
  * Copyright (C) Pete Hollobon 2015
  */
 
-#define F_CPU 1600000
+#define F_CPU 8000000UL
 
 #include <avr/io.h>
 #include <avr/sleep.h>
+#include <avr/interrupt.h>
+#include <util/atomic.h>
 #include <util/delay.h>
 
 #include <stdint.h>
@@ -21,6 +23,20 @@
 #define key2 ((PIND & (1 << 6)) == 0)
 #define key3 ((PIND & (1 << 5)) == 0)
 
+volatile uint16_t key1_time = 0;
+volatile uint16_t key1_last_time = 0;
+volatile uint16_t key1_clicks = 0;
+
+volatile uint16_t key2_time = 0;
+volatile uint16_t key2_last_time = 0;
+volatile uint16_t key2_clicks = 0;
+
+volatile uint16_t key3_time = 0;
+volatile uint16_t key3_last_time = 0;
+volatile uint16_t key3_clicks = 0;
+
+volatile uint16_t clock_count = 0;
+
 void set_up_keys(void)
 {
     /* Set high 3 bits of port D as input */
@@ -28,6 +44,64 @@ void set_up_keys(void)
 
     /* Turn on pull-up resistors on high 3 bits */
     PORTD |= 0b11100000;
+}
+
+void set_up_timer(void)
+{
+    cli();                      /* disable interrupts */
+
+    ICR1 = 7810;                /* input capture register 1 */
+
+    TCCR1A = 0;                 /* zero output compare stuff and the low two WGM bits */
+    
+    // timer counter control register 1 B: Mode 12, CTC on ICR1, no prescaling
+    TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS10);
+
+    //Set interrupt on compare match
+    TIMSK = (1 << TICIE1);
+
+    sei();
+}
+
+ISR (TIMER1_CAPT_vect)
+{
+    // if keyn_time is nonzero, the key has been pressed for that amount of time
+    // if keyn_last_time is nonzero, the last keypress lasted that length of time
+    
+    if (key1) {
+        key1_time++;
+        if (key1_time % 250 == 0)
+            key1_clicks++;
+    }
+    else if (key1_time) {
+        key1_last_time = key1_time;
+        key1_time = 0;
+        key1_clicks = 0;
+    }
+
+    if (key2) {
+        key2_time++;
+        if (key2_time % 250 == 0)
+            key2_clicks++;
+    }
+    else if (key2_time) {
+        key2_last_time = key2_time;
+        key2_time = 0;
+        key2_clicks = 0;
+    }
+
+    if (key3) {
+        key3_time++;
+        if (key3_time % 250 == 0)
+            key3_clicks++;
+    }
+    else if (key3_time) {
+        key3_last_time = key3_time;
+        key3_time = 0;
+        key3_clicks = 0;
+    }
+
+    clock_count++;
 }
 
 /* Copy the source board to the destination, overlaying shape at the row specified */
@@ -111,15 +185,22 @@ int main(void)
     uint8_t shape_selection;
     uint8_t shape_width;
     uint8_t shape[4], proposed_shape[4];
+    unsigned int last_block_move_clock;
+    unsigned int drop_interval = 600;
     bool update_shape;
-    int delay_loop_count;
+    unsigned int key1_last_clicks = 0, key2_last_clicks = 0, key3_last_clicks = 0;
+    /* uint16_t counter = 0; */
+    uint8_t last_clock_count = 0;
 
     HTpinsetup();
     HTsetup();
     set_up_keys();
+    set_up_timer();
     HTbrightness(1);
 
     memset(board, 0, 32);
+    memset(leds, 1, 32);
+    HTsendscreen();
 
     shape_top = 0;
     shape_offset = 3;
@@ -127,68 +208,85 @@ int main(void)
     shape_selection = rand() % 7;
     shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
     memcpy(shape, shapes[shape_selection][shape_rotation], 4);
+    offset_shape(shape, shape_offset);
 
-    while (1) {
-        if (test_collision(board, shape, shape_top + 1)) {
-            if (shape_top == 0)
-                break;
-
-            collapse_full_rows(leds, board);
-
-            shape_top = 0;
-            shape_offset = 3;
-            shape_rotation = rand() % 4;
-            shape_selection = rand() % 7;
-            shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
-            memcpy(shape, shapes[shape_selection][shape_rotation], 4);
-            offset_shape(shape, shape_offset);
-        }
-        else {
-            delay_loop_count = 0;
-
-            while (delay_loop_count++ < 5) {
-                update_shape = false;
-                if (key3) {
-                    if (shape_offset > 0) {
-                        proposed_shape_offset = shape_offset - 1;
-                        proposed_shape_rotation = shape_rotation;
-                    }
-                    update_shape = true;
-                }
-                else if (key1) {
-                    if (shape_offset + shape_width < 8) {
-                        proposed_shape_offset = shape_offset + 1;
-                        proposed_shape_rotation = shape_rotation;
-                    }
-                    update_shape = true;
-                }
-                else if (key2) {
-                    proposed_shape_rotation = (shape_rotation + 1) % 4;
-                    proposed_shape_offset = shape_offset;
-                    if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
-                        update_shape = true;
-                }
-
-                if (update_shape) {
-                    memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
-                    offset_shape(proposed_shape, proposed_shape_offset);
-
-                    if (!test_collision(board, proposed_shape, shape_top)) {
-                        shape_offset = proposed_shape_offset;
-                        shape_rotation = proposed_shape_rotation;
-                        memcpy(shape, proposed_shape, 4);
-                        shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
-                    }
+    last_block_move_clock = clock_count;
     
-                    overlay_shape(board, leds, shape, shape_top);
-                    HTsendscreen();
-                }
-                _delay_ms(100);
+    while (1) {
+        if ((clock_count - last_block_move_clock) > drop_interval) {
+            last_block_move_clock = clock_count;
+            if (test_collision(board, shape, shape_top + 1)) { /* block has fallen as far as it can */
+                if (shape_top == 0)
+                    break;
+
+                collapse_full_rows(leds, board);
+
+                shape_top = 0;
+                shape_offset = 3;
+                shape_rotation = rand() % 4;
+                shape_selection = rand() % 7;
+                shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+                memcpy(shape, shapes[shape_selection][shape_rotation], 4);
+                offset_shape(shape, shape_offset);
+            }
+            else {
+                shape_top++;
             }
 
-            shape_top++;
+            overlay_shape(board, leds, shape, shape_top);
+            HTsendscreen();
         }
-        overlay_shape(board, leds, shape, shape_top);
-        HTsendscreen();
+                
+        update_shape = false;
+        if (key3_clicks > 0 && key3_last_clicks < key3_clicks) {
+            // move left
+            if (shape_offset > 0) {
+                proposed_shape_offset = shape_offset - (key3_clicks - key3_last_clicks);
+                if (proposed_shape_offset < 0)
+                    proposed_shape_offset = 0;
+                proposed_shape_rotation = shape_rotation;
+                update_shape = true;
+            }
+            key3_last_clicks = key3_clicks;
+        }
+        else if (key1_clicks > 0 && key1_last_clicks < key1_clicks) {
+            // move right
+            proposed_shape_offset = shape_offset + (key1_clicks - key1_last_clicks);
+            if (proposed_shape_offset + shape_width > 8)
+                proposed_shape_offset = 8 - shape_width;
+            proposed_shape_rotation = shape_rotation;
+            update_shape = true;            
+            key1_last_clicks = key1_clicks;
+        }
+        else if (key2_clicks > 0 && key2_last_clicks < key2_clicks) {
+            // rotate
+            proposed_shape_rotation = (shape_rotation + key2_clicks - key2_last_clicks) % 4;
+            proposed_shape_offset = shape_offset;
+            key2_last_clicks = key2_clicks;
+            if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
+                update_shape = true;
+        }
+
+        if (key1_clicks == 0 && key1_last_clicks)
+            key1_last_clicks = 0;
+        if (key2_clicks == 0 && key2_last_clicks)
+            key2_last_clicks = 0;
+        if (key3_clicks == 0 && key3_last_clicks)
+            key3_last_clicks = 0;
+
+        if (update_shape) {
+            memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
+            offset_shape(proposed_shape, proposed_shape_offset);
+
+            if (!test_collision(board, proposed_shape, shape_top)) {
+                shape_offset = proposed_shape_offset;
+                shape_rotation = proposed_shape_rotation;
+                memcpy(shape, proposed_shape, 4);
+                shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+            }
+    
+            overlay_shape(board, leds, shape, shape_top);
+            HTsendscreen();
+        }
     }
 }
