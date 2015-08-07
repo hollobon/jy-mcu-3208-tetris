@@ -189,8 +189,6 @@ int main(void)
     unsigned int drop_interval = 600;
     bool update_shape;
     unsigned int key1_last_clicks = 0, key2_last_clicks = 0, key3_last_clicks = 0;
-    /* uint16_t counter = 0; */
-    uint8_t last_clock_count = 0;
 
     HTpinsetup();
     HTsetup();
