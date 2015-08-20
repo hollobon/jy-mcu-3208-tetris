@@ -1,5 +1,5 @@
 /* Tetris-like falling blocks game for JY-MCY 3208 "Lattice Clock"
- * 
+ *
  * Copyright (C) Pete Hollobon 2015
  */
 
@@ -23,19 +23,46 @@
 #define key2 ((PIND & (1 << 6)) == 0)
 #define key3 ((PIND & (1 << 5)) == 0)
 
-volatile uint16_t key1_time = 0;
-volatile uint16_t key1_last_time = 0;
-volatile uint16_t key1_clicks = 0;
+#define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
 
-volatile uint16_t key2_time = 0;
-volatile uint16_t key2_last_time = 0;
-volatile uint16_t key2_clicks = 0;
+#define MQ_SIZE 20
+uint8_t _mq[MQ_SIZE];
+uint8_t _mq_front = 0;
+uint8_t _mq_back = 0;
 
-volatile uint16_t key3_time = 0;
-volatile uint16_t key3_last_time = 0;
-volatile uint16_t key3_clicks = 0;
+#define mq_empty (_mq_front == _mq_back)
+#define mq_used ((_mq_front - _mq_back) % MQ_SIZE)
+#define mq_space (MQ_SIZE - mq_used)
+
+bool mq_put(uint8_t x)
+{
+    if (mq_space < 1)
+        return false;
+
+    _mq[_mq_front] = x;
+    _mq_front = (_mq_front + 1) % MQ_SIZE;
+    return true;
+}
+
+bool mq_get(uint8_t *value)
+{
+    if (mq_empty)
+        return false;
+    *value = _mq[_mq_back];
+    _mq_back = (_mq_back + 1) % MQ_SIZE;
+    return true;
+}
+
+#define M_KEY_DOWN 8
+#define M_KEY_UP 9
+#define M_KEY_REPEAT 10
+
+#define msg_create(event, param) (param << 4 | (event & 0x0F))
+#define msg_get_event(msg) (msg & 0x0F)
+#define msg_get_param(msg) (msg >> 4)
 
 volatile uint16_t clock_count = 0;
+volatile uint16_t key1_time = 0;
 
 void set_up_keys(void)
 {
@@ -53,7 +80,7 @@ void set_up_timer(void)
     ICR1 = 7810;                /* input capture register 1 */
 
     TCCR1A = 0;                 /* zero output compare stuff and the low two WGM bits */
-    
+
     // timer counter control register 1 B: Mode 12, CTC on ICR1, no prescaling
     TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS10);
 
@@ -65,40 +92,26 @@ void set_up_timer(void)
 
 ISR (TIMER1_CAPT_vect)
 {
-    // if keyn_time is nonzero, the key has been pressed for that amount of time
-    // if keyn_last_time is nonzero, the last keypress lasted that length of time
-    
-    if (key1) {
-        key1_time++;
-        if (key1_time % 250 == 0)
-            key1_clicks++;
-    }
-    else if (key1_time) {
-        key1_last_time = key1_time;
-        key1_time = 0;
-        key1_clicks = 0;
-    }
+    static bool key_seen[3] = {false, false, false};
+    static uint16_t key_clock[3] = {0, 0, 0};
+    int key;
 
-    if (key2) {
-        key2_time++;
-        if (key2_time % 250 == 0)
-            key2_clicks++;
-    }
-    else if (key2_time) {
-        key2_last_time = key2_time;
-        key2_time = 0;
-        key2_clicks = 0;
-    }
-
-    if (key3) {
-        key3_time++;
-        if (key3_time % 250 == 0)
-            key3_clicks++;
-    }
-    else if (key3_time) {
-        key3_last_time = key3_time;
-        key3_time = 0;
-        key3_clicks = 0;
+    for (key = 0; key < 3; key++) {
+        if (key_down(key)) {
+            if (!key_seen[key]) {
+                key_clock[key] = clock_count;
+                key_seen[key] = true;
+                mq_put(msg_create(M_KEY_DOWN, key));
+            }
+            else if (clock_count - key_clock[key] > 300) {
+                key_clock[key] = clock_count;
+                mq_put(msg_create(M_KEY_REPEAT, key));
+            }
+        }
+        else if (key_seen[key]) {
+            key_seen[key] = false;
+            mq_put(msg_create(M_KEY_UP, key));
+        }
     }
 
     clock_count++;
@@ -176,6 +189,10 @@ uint8_t get_shape_width(uint8_t shape[4])
     return 8 - min;
 }
 
+#define MOVE_LEFT 1
+#define MOVE_RIGHT 2
+#define ROTATE 3
+
 int main(void)
 {
     uint8_t board[32];
@@ -188,9 +205,8 @@ int main(void)
     unsigned int last_block_move_clock;
     unsigned int drop_interval = 600;
     bool update_shape;
-    unsigned int key1_last_clicks = 0, key2_last_clicks = 0, key3_last_clicks = 0;
-    /* uint16_t counter = 0; */
-    uint8_t last_clock_count = 0;
+    uint8_t message;
+    uint8_t action;
 
     HTpinsetup();
     HTsetup();
@@ -211,8 +227,26 @@ int main(void)
     offset_shape(shape, shape_offset);
 
     last_block_move_clock = clock_count;
-    
+
     while (1) {
+        action = 0;
+        if (mq_get(&message)) {
+            switch (msg_get_event(message)) {
+            case M_KEY_DOWN:
+            case M_KEY_REPEAT:
+                switch (msg_get_param(message)) {
+                case 0:
+                    action = MOVE_LEFT;
+                    break;
+                case 1:
+                    action = ROTATE;
+                    break;
+                case 2:
+                    action = MOVE_RIGHT;
+                }
+            }
+        }
+
         if ((clock_count - last_block_move_clock) > drop_interval) {
             last_block_move_clock = clock_count;
             if (test_collision(board, shape, shape_top + 1)) { /* block has fallen as far as it can */
@@ -236,43 +270,30 @@ int main(void)
             overlay_shape(board, leds, shape, shape_top);
             HTsendscreen();
         }
-                
+
         update_shape = false;
-        if (key3_clicks > 0 && key3_last_clicks < key3_clicks) {
-            // move left
+        if (action == MOVE_LEFT) {
             if (shape_offset > 0) {
-                proposed_shape_offset = shape_offset - (key3_clicks - key3_last_clicks);
+                proposed_shape_offset = shape_offset - 1;
                 if (proposed_shape_offset < 0)
                     proposed_shape_offset = 0;
                 proposed_shape_rotation = shape_rotation;
                 update_shape = true;
             }
-            key3_last_clicks = key3_clicks;
         }
-        else if (key1_clicks > 0 && key1_last_clicks < key1_clicks) {
-            // move right
-            proposed_shape_offset = shape_offset + (key1_clicks - key1_last_clicks);
+        else if (action == MOVE_RIGHT) {
+            proposed_shape_offset = shape_offset + 1;
             if (proposed_shape_offset + shape_width > 8)
                 proposed_shape_offset = 8 - shape_width;
             proposed_shape_rotation = shape_rotation;
-            update_shape = true;            
-            key1_last_clicks = key1_clicks;
+            update_shape = true;
         }
-        else if (key2_clicks > 0 && key2_last_clicks < key2_clicks) {
-            // rotate
-            proposed_shape_rotation = (shape_rotation + key2_clicks - key2_last_clicks) % 4;
+        else if (action == ROTATE) {
+            proposed_shape_rotation = (shape_rotation + 1) % 4;
             proposed_shape_offset = shape_offset;
-            key2_last_clicks = key2_clicks;
             if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
                 update_shape = true;
         }
-
-        if (key1_clicks == 0 && key1_last_clicks)
-            key1_last_clicks = 0;
-        if (key2_clicks == 0 && key2_last_clicks)
-            key2_last_clicks = 0;
-        if (key3_clicks == 0 && key3_last_clicks)
-            key3_last_clicks = 0;
 
         if (update_shape) {
             memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
@@ -284,9 +305,10 @@ int main(void)
                 memcpy(shape, proposed_shape, 4);
                 shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
             }
-    
+
             overlay_shape(board, leds, shape, shape_top);
             HTsendscreen();
         }
     }
 }
+
