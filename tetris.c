@@ -156,6 +156,7 @@ uint8_t get_shape_width(uint8_t shape[4])
 #define MOVE_LEFT 1
 #define MOVE_RIGHT 2
 #define ROTATE 3
+#define DROP 4
 
 int main(void)
 {
@@ -171,6 +172,7 @@ int main(void)
     bool update_shape;
     uint8_t message;
     uint8_t action;
+    uint8_t key1_autorepeat = false;
 
     HTpinsetup();
     HTsetup();
@@ -195,23 +197,31 @@ int main(void)
     while (1) {
         action = 0;
         if (mq_get(&message)) {
-            switch (msg_get_event(message)) {
-            case M_KEY_DOWN:
-            case M_KEY_REPEAT:
+            if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
                 switch (msg_get_param(message)) {
                 case 0:
                     action = MOVE_LEFT;
-                    break;
-                case 1:
-                    action = ROTATE;
                     break;
                 case 2:
                     action = MOVE_RIGHT;
                 }
             }
+            if (msg_get_param(message) == 1) {
+                if (msg_get_event(message) == M_KEY_REPEAT) {
+                    key1_autorepeat = true;
+                    action = DROP;
+                }
+
+                else if (msg_get_event(message) == M_KEY_UP) {
+                    if (key1_autorepeat)
+                        key1_autorepeat = false;
+                    else
+                        action = ROTATE;
+                }
+            }
         }
 
-        if ((clock_count - last_block_move_clock) > drop_interval) {
+        if (action == DROP || (clock_count - last_block_move_clock) > drop_interval) {
             last_block_move_clock = clock_count;
             if (test_collision(board, shape, shape_top + 1)) { /* block has fallen as far as it can */
                 if (shape_top == 0)
@@ -275,4 +285,3 @@ int main(void)
         }
     }
 }
-
