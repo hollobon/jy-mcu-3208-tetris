@@ -57,7 +57,9 @@ void set_up_timer(void)
 ISR (TIMER1_CAPT_vect)
 {
     static bool key_seen[3] = {false, false, false};
+    static bool key_repeating[3] = {false, false, false};
     static uint16_t key_clock[3] = {0, 0, 0};
+    static uint16_t repeat_delay[3] = {300, 100, 300};
     int key;
 
     for (key = 0; key < 3; key++) {
@@ -67,14 +69,16 @@ ISR (TIMER1_CAPT_vect)
                 key_seen[key] = true;
                 mq_put(msg_create(M_KEY_DOWN, key));
             }
-            else if (clock_count - key_clock[key] > 300) {
+            else if (clock_count - key_clock[key] > (key_repeating[key] ? repeat_delay[key] : 300)) {
                 key_clock[key] = clock_count;
                 mq_put(msg_create(M_KEY_REPEAT, key));
+                key_repeating[key] = true;
             }
         }
         else if (key_seen[key]) {
             key_seen[key] = false;
             mq_put(msg_create(M_KEY_UP, key));
+            key_repeating[key] = false;
         }
     }
 
