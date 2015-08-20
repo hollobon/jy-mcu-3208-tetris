@@ -9,6 +9,6 @@ MCU = atmega8
 
 TARGET = tetris
 
-SRC = tetris.c ht1632c.c
+SRC = tetris.c mq.c ht1632c.c
 
 include rules.mk

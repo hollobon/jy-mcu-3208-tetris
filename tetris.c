@@ -17,52 +17,16 @@
 #include <string.h>
 
 #include "ht1632c.h"
+#include "mq.h"
 #include "tetris.h"
-
-#define key1 ((PIND & (1 << 7)) == 0)
-#define key2 ((PIND & (1 << 6)) == 0)
-#define key3 ((PIND & (1 << 5)) == 0)
-
-#define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
-
-#define MQ_SIZE 20
-uint8_t _mq[MQ_SIZE];
-uint8_t _mq_front = 0;
-uint8_t _mq_back = 0;
-
-#define mq_empty (_mq_front == _mq_back)
-#define mq_used ((_mq_front - _mq_back) % MQ_SIZE)
-#define mq_space (MQ_SIZE - mq_used)
-
-bool mq_put(uint8_t x)
-{
-    if (mq_space < 1)
-        return false;
-
-    _mq[_mq_front] = x;
-    _mq_front = (_mq_front + 1) % MQ_SIZE;
-    return true;
-}
-
-bool mq_get(uint8_t *value)
-{
-    if (mq_empty)
-        return false;
-    *value = _mq[_mq_back];
-    _mq_back = (_mq_back + 1) % MQ_SIZE;
-    return true;
-}
 
 #define M_KEY_DOWN 8
 #define M_KEY_UP 9
 #define M_KEY_REPEAT 10
 
-#define msg_create(event, param) (param << 4 | (event & 0x0F))
-#define msg_get_event(msg) (msg & 0x0F)
-#define msg_get_param(msg) (msg >> 4)
+#define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
 
 volatile uint16_t clock_count = 0;
-volatile uint16_t key1_time = 0;
 
 void set_up_keys(void)
 {
