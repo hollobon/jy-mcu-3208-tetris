@@ -5,6 +5,7 @@
 
 #define F_CPU 8000000UL
 
+#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
@@ -51,6 +52,14 @@ void set_up_timer(void)
     TIMSK = (1 << TICIE1);
 
     sei();
+}
+
+void set_up_rand()
+{
+    static uint16_t EEMEM rand_seed;
+
+    srand(eeprom_read_word(&rand_seed));
+    eeprom_write_dword(&rand_seed, rand());
 }
 
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
@@ -205,6 +214,7 @@ int main(void)
     HTsetup();
     set_up_keys();
     set_up_timer();
+    set_up_rand();
     HTbrightness(1);
 
     memset(board, 0, 32);
