@@ -126,6 +126,29 @@ bool test_collision(uint8_t board[32], uint8_t shape[4], uint8_t line)
     return false;
 }
 
+void flash_full_rows()
+{
+    int row;
+    int flash_count;
+    uint8_t flash_rows[4] = {0, 0, 0, 0};
+
+    for (row = 0; row < 32; row++) {
+        if (leds[row] == 0xff)
+            flash_rows[row >> 3] |= 1 << (row & 0x07);
+    }
+
+    if (flash_rows[0] || flash_rows[1] || flash_rows[2] || flash_rows[3]) {
+        for (flash_count = 0; flash_count < 4; flash_count++) {
+            for (row = 0; row < 32; row++) {
+                if (flash_rows[row >> 3] & (1 << (row & 0x07)))
+                    leds[row] ^= 0xFF;
+            }
+            HTsendscreen();
+            _delay_ms(100);
+        }
+    }
+}
+
 /* Copy the source board to the destination, omitting any complete rows */
 void collapse_full_rows(uint8_t src[32], uint8_t dest[32])
 {
@@ -231,6 +254,7 @@ int main(void)
                 if (shape_top == 0)
                     break;
 
+                flash_full_rows();
                 collapse_full_rows(leds, board);
 
                 shape_top = 0;
