@@ -294,7 +294,8 @@ int main(void)
         }
 
         update_shape = false;
-        if (action == MOVE_LEFT) {
+        switch (action) {
+        case MOVE_LEFT:
             if (shape_offset > 0) {
                 proposed_shape_offset = shape_offset - 1;
                 if (proposed_shape_offset < 0)
@@ -302,19 +303,22 @@ int main(void)
                 proposed_shape_rotation = shape_rotation;
                 update_shape = true;
             }
-        }
-        else if (action == MOVE_RIGHT) {
+            break;
+
+        case MOVE_RIGHT:
             proposed_shape_offset = shape_offset + 1;
             if (proposed_shape_offset + shape_width > 8)
                 proposed_shape_offset = 8 - shape_width;
             proposed_shape_rotation = shape_rotation;
             update_shape = true;
-        }
-        else if (action == ROTATE) {
+            break;
+
+        case ROTATE:
             proposed_shape_rotation = (shape_rotation + 1) % 4;
             proposed_shape_offset = shape_offset;
             if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
                 update_shape = true;
+            break;
         }
 
         if (update_shape) {
