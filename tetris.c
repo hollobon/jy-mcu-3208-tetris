@@ -222,118 +222,131 @@ int main(void)
     HTbrightness(1);
 
     memset(board, 0, 32);
-    memset(leds, 1, 32);
+    memset(leds, 0, 32);
     HTsendscreen();
 
-    shape_top = 0;
-    shape_offset = 3;
-    shape_rotation = rand() % 4;
-    shape_selection = rand() % 7;
-    shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
-    memcpy(shape, shapes[shape_selection][shape_rotation], 4);
-    offset_shape(shape, shape_offset);
-
-    last_block_move_clock = clock_count;
-    last_drop_reduction_clock = clock_count;
-
     while (1) {
-        if (drop_interval > MIN_DROP_INTERVAL && clock_count - last_drop_reduction_clock > 30000) {
-            drop_interval -= DROP_INCREMENT;
-            last_drop_reduction_clock = clock_count;
-        }
-
-        action = 0;
-        if (mq_get(&message)) {
-            if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
-                switch (msg_get_param(message)) {
-                case 0:
-                    action = MOVE_LEFT;
+        while (1) {
+            if (mq_get(&message)) {
+                if (msg_get_event(message) == M_KEY_DOWN) {
+                    memset(leds, 0, 32);
+                    memset(board, 0, 32);
+                    HTsendscreen();
                     break;
-                case 2:
-                    action = MOVE_RIGHT;
-                }
-            }
-            if (msg_get_param(message) == 1) {
-                if (msg_get_event(message) == M_KEY_REPEAT) {
-                    key1_autorepeat = true;
-                    action = DROP;
-                }
-
-                else if (msg_get_event(message) == M_KEY_UP) {
-                    if (key1_autorepeat)
-                        key1_autorepeat = false;
-                    else
-                        action = ROTATE;
                 }
             }
         }
+        
+        shape_top = 0;
+        shape_offset = 3;
+        shape_rotation = rand() % 4;
+        shape_selection = rand() % 7;
+        shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+        memcpy(shape, shapes[shape_selection][shape_rotation], 4);
+        offset_shape(shape, shape_offset);
 
-        if (action == DROP || (clock_count - last_block_move_clock) > drop_interval) {
-            last_block_move_clock = clock_count;
-            if (test_collision(board, shape, shape_top + 1)) { /* block has fallen as far as it can */
-                if (shape_top == 0)
-                    break;
+        last_block_move_clock = clock_count;
+        last_drop_reduction_clock = clock_count;
 
-                flash_full_rows();
-                collapse_full_rows(leds, board);
-
-                shape_top = 0;
-                shape_offset = 3;
-                shape_rotation = rand() % 4;
-                shape_selection = rand() % 7;
-                shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
-                memcpy(shape, shapes[shape_selection][shape_rotation], 4);
-                offset_shape(shape, shape_offset);
-            }
-            else {
-                shape_top++;
+        while (1) {
+            if (drop_interval > MIN_DROP_INTERVAL && clock_count - last_drop_reduction_clock > 30000) {
+                drop_interval -= DROP_INCREMENT;
+                last_drop_reduction_clock = clock_count;
             }
 
-            overlay_shape(board, leds, shape, shape_top);
-            HTsendscreen();
-        }
+            action = 0;
+            if (mq_get(&message)) {
+                if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
+                    switch (msg_get_param(message)) {
+                    case 0:
+                        action = MOVE_LEFT;
+                        break;
+                    case 2:
+                        action = MOVE_RIGHT;
+                    }
+                }
+                if (msg_get_param(message) == 1) {
+                    if (msg_get_event(message) == M_KEY_REPEAT) {
+                        key1_autorepeat = true;
+                        action = DROP;
+                    }
 
-        update_shape = false;
-        switch (action) {
-        case MOVE_LEFT:
-            if (shape_offset > 0) {
-                proposed_shape_offset = shape_offset - 1;
-                if (proposed_shape_offset < 0)
-                    proposed_shape_offset = 0;
+                    else if (msg_get_event(message) == M_KEY_UP) {
+                        if (key1_autorepeat)
+                            key1_autorepeat = false;
+                        else
+                            action = ROTATE;
+                    }
+                }
+            }
+
+            if (action == DROP || (clock_count - last_block_move_clock) > drop_interval) {
+                last_block_move_clock = clock_count;
+                if (test_collision(board, shape, shape_top + 1)) { /* block has fallen as far as it can */
+                    if (shape_top == 0)
+                        break;
+
+                    flash_full_rows();
+                    collapse_full_rows(leds, board);
+
+                    shape_top = 0;
+                    shape_offset = 3;
+                    shape_rotation = rand() % 4;
+                    shape_selection = rand() % 7;
+                    shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+                    memcpy(shape, shapes[shape_selection][shape_rotation], 4);
+                    offset_shape(shape, shape_offset);
+                }
+                else {
+                    shape_top++;
+                }
+
+                overlay_shape(board, leds, shape, shape_top);
+                HTsendscreen();
+            }
+
+            update_shape = false;
+            switch (action) {
+            case MOVE_LEFT:
+                if (shape_offset > 0) {
+                    proposed_shape_offset = shape_offset - 1;
+                    if (proposed_shape_offset < 0)
+                        proposed_shape_offset = 0;
+                    proposed_shape_rotation = shape_rotation;
+                    update_shape = true;
+                }
+                break;
+
+            case MOVE_RIGHT:
+                proposed_shape_offset = shape_offset + 1;
+                if (proposed_shape_offset + shape_width > 8)
+                    proposed_shape_offset = 8 - shape_width;
                 proposed_shape_rotation = shape_rotation;
                 update_shape = true;
-            }
-            break;
+                break;
 
-        case MOVE_RIGHT:
-            proposed_shape_offset = shape_offset + 1;
-            if (proposed_shape_offset + shape_width > 8)
-                proposed_shape_offset = 8 - shape_width;
-            proposed_shape_rotation = shape_rotation;
-            update_shape = true;
-            break;
-
-        case ROTATE:
-            proposed_shape_rotation = (shape_rotation + 1) % 4;
-            proposed_shape_offset = shape_offset;
-            if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
-                update_shape = true;
-            break;
-        }
-
-        if (update_shape) {
-            memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
-            offset_shape(proposed_shape, proposed_shape_offset);
-
-            if (!test_collision(board, proposed_shape, shape_top)) {
-                shape_offset = proposed_shape_offset;
-                shape_rotation = proposed_shape_rotation;
-                memcpy(shape, proposed_shape, 4);
-                shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+            case ROTATE:
+                proposed_shape_rotation = (shape_rotation + 1) % 4;
+                proposed_shape_offset = shape_offset;
+                if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
+                    update_shape = true;
+                break;
             }
 
-            overlay_shape(board, leds, shape, shape_top);
-            HTsendscreen();
+            if (update_shape) {
+                memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
+                offset_shape(proposed_shape, proposed_shape_offset);
+
+                if (!test_collision(board, proposed_shape, shape_top)) {
+                    shape_offset = proposed_shape_offset;
+                    shape_rotation = proposed_shape_rotation;
+                    memcpy(shape, proposed_shape, 4);
+                    shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
+                }
+
+                overlay_shape(board, leds, shape, shape_top);
+                HTsendscreen();
+            }
         }
     }
 }
