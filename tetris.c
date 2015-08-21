@@ -54,7 +54,7 @@ void set_up_timer(void)
     sei();
 }
 
-void set_up_rand()
+void set_up_rand(void)
 {
     static uint16_t EEMEM rand_seed;
 
@@ -135,21 +135,21 @@ bool test_collision(uint8_t board[32], uint8_t shape[4], uint8_t line)
     return false;
 }
 
-void flash_full_rows()
+void flash_full_rows(void)
 {
     int row;
     int flash_count;
-    uint8_t flash_rows[4] = {0, 0, 0, 0};
+    uint32_t flash_rows = 0;
 
     for (row = 0; row < 32; row++) {
         if (leds[row] == 0xff)
-            flash_rows[row >> 3] |= 1 << (row & 0x07);
+            flash_rows |= 1UL << row;
     }
 
-    if (flash_rows[0] || flash_rows[1] || flash_rows[2] || flash_rows[3]) {
+    if (flash_rows) {
         for (flash_count = 0; flash_count < 4; flash_count++) {
             for (row = 0; row < 32; row++) {
-                if (flash_rows[row >> 3] & (1 << (row & 0x07)))
+                if (flash_rows & (1UL << row))
                     leds[row] ^= 0xFF;
             }
             HTsendscreen();
