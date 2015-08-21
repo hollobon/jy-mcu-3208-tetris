@@ -68,7 +68,7 @@ ISR (TIMER1_CAPT_vect)
     static bool key_seen[3] = {false, false, false};
     static bool key_repeating[3] = {false, false, false};
     static uint16_t key_clock[3] = {0, 0, 0};
-    static uint16_t repeat_delay[3] = {300, 100, 300};
+    static uint16_t repeat_delay[3] = {300, 50, 300};
     int key;
 
     for (key = 0; key < 3; key++) {
