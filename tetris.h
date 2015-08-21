@@ -8,11 +8,14 @@
 
 #include <stdint.h>
 
+/* Array of shapes. A shape is represented by four bytes, one byte per row.
+   Each shape includes four rotations. 
+*/
 uint8_t shapes[7][4][4] = {
     /* line */
-    0b11110000, 0, 0, 0,
+    0b11110000, 0b00000000, 0b00000000, 0b00000000,
     0b10000000, 0b10000000, 0b10000000, 0b10000000,
-    0b11110000, 0, 0, 0,
+    0b11110000, 0b00000000, 0b00000000, 0b00000000,
     0b10000000, 0b10000000, 0b10000000, 0b10000000,
     /* box */
     0b11000000, 0b11000000, 0b00000000, 0b00000000,
