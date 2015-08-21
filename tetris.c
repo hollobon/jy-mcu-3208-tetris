@@ -194,6 +194,9 @@ uint8_t get_shape_width(uint8_t shape[4])
 #define ROTATE 3
 #define DROP 4
 
+#define MIN_DROP_INTERVAL 150
+#define DROP_INCREMENT 30
+
 int main(void)
 {
     uint8_t board[32];
@@ -205,6 +208,7 @@ int main(void)
     uint8_t shape[4], proposed_shape[4];
     unsigned int last_block_move_clock;
     unsigned int drop_interval = 600;
+    unsigned int last_drop_reduction_clock;
     bool update_shape;
     uint8_t message;
     uint8_t action;
@@ -230,8 +234,14 @@ int main(void)
     offset_shape(shape, shape_offset);
 
     last_block_move_clock = clock_count;
+    last_drop_reduction_clock = clock_count;
 
     while (1) {
+        if (drop_interval > MIN_DROP_INTERVAL && clock_count - last_drop_reduction_clock > 30000) {
+            drop_interval -= DROP_INCREMENT;
+            last_drop_reduction_clock = clock_count;
+        }
+
         action = 0;
         if (mq_get(&message)) {
             if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
