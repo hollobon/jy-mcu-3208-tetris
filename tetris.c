@@ -8,7 +8,6 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
-#include <util/atomic.h>
 #include <util/delay.h>
 
 #include <stdint.h>
@@ -41,19 +40,20 @@ void set_up_timer(void)
 {
     cli();                      /* disable interrupts */
 
-    ICR1 = 7810;                /* input capture register 1 */
+    ICR1 = F_CPU / 1000;        /* input capture register 1 - interrupt frequency 1000Hz */
 
     TCCR1A = 0;                 /* zero output compare stuff and the low two WGM bits */
 
-    // timer counter control register 1 B: Mode 12, CTC on ICR1, no prescaling
+    // timer counter control register 1 B: Mode 12, CTC with ICR1 as TOP, no prescaling
     TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS10);
 
-    //Set interrupt on compare match
+    // Set interrupt on compare match
     TIMSK = (1 << TICIE1);
 
     sei();
 }
 
+/* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
 ISR (TIMER1_CAPT_vect)
 {
     static bool key_seen[3] = {false, false, false};
