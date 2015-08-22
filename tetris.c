@@ -57,9 +57,11 @@ void set_up_timer(void)
 void set_up_rand(void)
 {
     static uint16_t EEMEM rand_seed;
+    uint16_t seed_value;
 
-    srand(eeprom_read_word(&rand_seed));
-    eeprom_write_dword(&rand_seed, rand());
+    seed_value = eeprom_read_word(&rand_seed);
+    srand(seed_value);
+    eeprom_write_dword(&rand_seed, seed_value + 1);
 }
 
 #define MAX_TIMERS 1
