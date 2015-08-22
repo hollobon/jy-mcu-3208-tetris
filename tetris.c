@@ -61,7 +61,7 @@ void set_up_rand(void)
 
     seed_value = eeprom_read_word(&rand_seed);
     srand(seed_value);
-    eeprom_write_dword(&rand_seed, seed_value + 1);
+    eeprom_write_word(&rand_seed, seed_value + 1);
 }
 
 #define MAX_TIMERS 1
