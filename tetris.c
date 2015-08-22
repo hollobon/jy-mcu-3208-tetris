@@ -64,14 +64,27 @@ void set_up_rand(void)
     eeprom_write_word(&rand_seed, seed_value + 1);
 }
 
-#define MAX_TIMERS 1
-uint16_t timers[MAX_TIMERS];
+#define MAX_TIMERS 1 // max 16 due to timers_active and timers_recur bitfields
+typedef struct {
+    uint16_t ms;
+    uint16_t end;
+} timer_t;
+timer_t timers[MAX_TIMERS];
 uint16_t timers_active = 0;
+uint16_t timers_recur = 0;
 
-bool set_timer(uint16_t ms, uint8_t n)
+bool set_timer(uint16_t ms, uint8_t n, bool recur)
 {
     timers_active |= 1 << n;
-    timers[n] = clock_count + ms;
+    if (recur)
+        timers_recur |= 1 << n;
+    timers[n].ms = ms;
+    timers[n].end = clock_count + ms;
+}
+
+void stop_timer(uint8_t n)
+{
+    timers_active &= ~(1 << n);
 }
 
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
@@ -103,8 +116,11 @@ ISR (TIMER1_CAPT_vect)
     }
 
     for (int timer = 0; timer < MAX_TIMERS; timer++) {
-        if (timers_active & (1 << timer) && clock_count > timers[timer]) {
-            timers_active &= ~(1 << timer);
+        if (timers_active & (1 << timer) && clock_count > timers[timer].end) {
+            if (!timers_recur & (1 << timer))
+                stop_timer(timer);
+            else
+                timers[timer].end = clock_count + timers[timer].ms;
             mq_put(msg_create(M_TIMER, timer));
         }
     }
@@ -247,7 +263,7 @@ int main(void)
     while (1) {
         action = 0;
         memcpy(board, leds, 32);
-        set_timer(400, 0);
+        set_timer(400, 0, true);
         while (1) {
             if (mq_get(&message)) {
                 if (msg_get_event(message) == M_KEY_DOWN) {
@@ -257,7 +273,6 @@ int main(void)
                     break;
                 }
                 else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
-                    set_timer(400, 0);
                     if (action) {
                         memcpy(leds, board, 32);
                         HTsendscreen();
@@ -271,6 +286,7 @@ int main(void)
                 }
             }
         }
+        stop_timer(0);
 
         shape_top = 0;
         shape_offset = 3;
@@ -317,8 +333,9 @@ int main(void)
 
             if (action == DROP || (clock_count - last_block_move_clock) > drop_interval) {
                 last_block_move_clock = clock_count;
-                if (test_collision(board, shape, shape_top + 1)) { /* block has fallen as far as it can */
+                if (test_collision(board, shape, shape_top + 1)) {
                     if (shape_top == 0)
+                        // Game over
                         break;
 
                     flash_full_rows();
