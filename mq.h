@@ -22,4 +22,6 @@ bool mq_get(uint8_t *value);
 #define msg_get_event(msg) (msg & 0x0F)
 #define msg_get_param(msg) (msg >> 4)
 
+#define M_TIMER 1
+
 #endif /* MQ_H */

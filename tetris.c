@@ -62,6 +62,16 @@ void set_up_rand(void)
     eeprom_write_dword(&rand_seed, rand());
 }
 
+#define MAX_TIMERS 1
+uint16_t timers[MAX_TIMERS];
+uint16_t timers_active = 0;
+
+bool set_timer(uint16_t ms, uint8_t n)
+{
+    timers_active |= 1 << n;
+    timers[n] = clock_count + ms;
+}
+
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
 ISR (TIMER1_CAPT_vect)
 {
@@ -69,9 +79,8 @@ ISR (TIMER1_CAPT_vect)
     static bool key_repeating[3] = {false, false, false};
     static uint16_t key_clock[3] = {0, 0, 0};
     static uint16_t repeat_delay[3] = {300, 50, 300};
-    int key;
 
-    for (key = 0; key < 3; key++) {
+    for (int key = 0; key < 3; key++) {
         if (key_down(key)) {
             if (!key_seen[key]) {
                 key_clock[key] = clock_count;
@@ -88,6 +97,13 @@ ISR (TIMER1_CAPT_vect)
             key_seen[key] = false;
             mq_put(msg_create(M_KEY_UP, key));
             key_repeating[key] = false;
+        }
+    }
+
+    for (int timer = 0; timer < MAX_TIMERS; timer++) {
+        if (timers_active & (1 << timer) && clock_count > timers[timer]) {
+            timers_active &= ~(1 << timer);
+            mq_put(msg_create(M_TIMER, timer));
         }
     }
 
@@ -220,12 +236,16 @@ int main(void)
     set_up_timer();
     set_up_rand();
     HTbrightness(1);
+    memset(timers, 0, MAX_TIMERS);
 
     memset(board, 0, 32);
     memset(leds, 0, 32);
     HTsendscreen();
 
     while (1) {
+        action = 0;
+        memcpy(board, leds, 32);
+        set_timer(400, 0);
         while (1) {
             if (mq_get(&message)) {
                 if (msg_get_event(message) == M_KEY_DOWN) {
@@ -234,9 +254,22 @@ int main(void)
                     HTsendscreen();
                     break;
                 }
+                else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
+                    set_timer(400, 0);
+                    if (action) {
+                        memcpy(leds, board, 32);
+                        HTsendscreen();
+                        action = 0;
+                    }
+                    else {
+                        memset(leds, 0, 32);
+                        HTsendscreen();
+                        action = 1;
+                    }
+                }
             }
         }
-        
+
         shape_top = 0;
         shape_offset = 3;
         shape_rotation = rand() % 4;
