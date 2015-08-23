@@ -128,6 +128,24 @@ ISR (TIMER1_CAPT_vect)
     clock_count++;
 }
 
+void intro(uint8_t board[32])
+{
+    int row = 0, height, shape_rotation, shape_selection, shape_offset;
+    uint8_t shape[4];
+    while (row < 32) {
+        shape_rotation = rand() % 4;
+        shape_selection = rand() % 7;
+        shape_offset = rand() % 5;
+        memcpy(shape, shapes[shape_selection][shape_rotation], 4);
+        offset_shape(shape, shape_offset);
+        for (height = 0; height < 4 && shape[height]; height++);
+        if (row + height > 31)
+            break;
+        overlay_shape(board, board, shape, row);
+        row += height + 1;
+    }
+}
+
 /* Copy the source board to the destination, overlaying shape at the row specified */
 void overlay_shape(uint8_t src[32], uint8_t dest[32], uint8_t shape[4], uint8_t shape_top)
 {
@@ -256,8 +274,7 @@ int main(void)
     HTbrightness(1);
     memset(timers, 0, MAX_TIMERS);
 
-    memset(board, 0, 32);
-    memset(leds, 0, 32);
+    intro(leds);
     HTsendscreen();
 
     while (1) {
