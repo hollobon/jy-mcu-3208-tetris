@@ -4,9 +4,11 @@ This is a Tetris-like falling blocks game for the JY-MCU 3208 "Lattice Clock" av
 Extreme, Banggood etc.
 
 The left button moves the current block left, the right button moves it right, and the centre
-button rotates it.
+button rotates it. Holding the centre button drops the block quickly.
 
-At the moment there is no scoring or in-game speedup.
+The block fall rate gradually increases over time.
+
+At the moment there is no scoring.
 
 To program using a USPasp with `avrdude`, do:
 
