@@ -73,7 +73,7 @@ timer_t timers[MAX_TIMERS];
 uint16_t timers_active = 0;
 uint16_t timers_recur = 0;
 
-bool set_timer(uint16_t ms, uint8_t n, bool recur)
+void set_timer(uint16_t ms, uint8_t n, bool recur)
 {
     timers_active |= 1 << n;
     if (recur)
@@ -117,7 +117,7 @@ ISR (TIMER1_CAPT_vect)
 
     for (int timer = 0; timer < MAX_TIMERS; timer++) {
         if (timers_active & (1 << timer) && clock_count > timers[timer].end) {
-            if (!timers_recur & (1 << timer))
+            if (!(timers_recur & (1 << timer)))
                 stop_timer(timer);
             else
                 timers[timer].end = clock_count + timers[timer].ms;
