@@ -317,7 +317,7 @@ int main(void)
         last_drop_reduction_clock = clock_count;
 
         while (1) {
-            if (drop_interval > MIN_DROP_INTERVAL && clock_count - last_drop_reduction_clock > 30000) {
+            if (drop_interval > MIN_DROP_INTERVAL && clock_count - last_drop_reduction_clock > 15000) {
                 drop_interval -= DROP_INCREMENT;
                 last_drop_reduction_clock = clock_count;
             }
