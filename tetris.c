@@ -19,6 +19,7 @@
 #include "ht1632c.h"
 #include "mq.h"
 #include "tetris.h"
+#include "numbers.h"
 
 #define M_KEY_DOWN 8
 #define M_KEY_UP 9
@@ -210,8 +211,10 @@ void flash_full_rows(void)
     }
 }
 
-/* Copy the source board to the destination, omitting any complete rows */
-void collapse_full_rows(uint8_t src[32], uint8_t dest[32])
+/* Copy the source board to the destination, omitting any complete rows
+ * Returns the number of completed rows that were collapsed
+ */
+int collapse_full_rows(uint8_t src[32], uint8_t dest[32])
 {
     int src_index, dest_index;
 
@@ -220,8 +223,11 @@ void collapse_full_rows(uint8_t src[32], uint8_t dest[32])
         if (src[src_index] != 0xff)
             dest[dest_index--] = src[src_index];
     }
+    src_index = dest_index + 1;
     while (dest_index >= 0)
         dest[dest_index--] = 0;
+
+    return src_index;
 }
 
 /* Get the "width" of a shape: the column number of the rightmost set pixel */
@@ -239,6 +245,40 @@ uint8_t get_shape_width(uint8_t shape[4])
         }
     }
     return 8 - min;
+}
+
+bool render_number(uint32_t number, byte board[32])
+{
+    ldiv_t q;
+    character c;
+    int pos = 0;
+    uint32_t n = number;
+
+    // calculate position of least significant digit
+    while (n) {
+        q = ldiv(n, 10);
+        n = q.quot;
+        c = numbers[q.rem];
+        pos += c.columns + 1;
+    }
+    pos -= 1;
+
+    if (pos > 31)
+        // overflows board
+        return false;
+
+    // render
+    while (number) {
+        q = ldiv(number, 10);
+        number = q.quot;
+        c = numbers[q.rem];
+        for (int i = c.columns - 1; i >= 0; i--) {
+            board[pos--] = c.bitmap[i];
+        }
+        pos--;
+    }
+
+    return true;
 }
 
 #define MOVE_LEFT 1
@@ -265,6 +305,7 @@ int main(void)
     uint8_t message;
     uint8_t action;
     uint8_t key1_autorepeat = false;
+    uint32_t score = 134;
 
     HTpinsetup();
     HTsetup();
@@ -279,6 +320,9 @@ int main(void)
 
     while (1) {
         action = 0;
+        memset(leds, 0, 32);
+        if (score)
+            render_number(score, leds);
         memcpy(board, leds, 32);
         set_timer(400, 0, true);
         while (1) {
@@ -305,6 +349,7 @@ int main(void)
         }
         stop_timer(0);
 
+        score = 0;
         shape_top = 0;
         shape_offset = 3;
         shape_rotation = rand() % 4;
@@ -356,7 +401,7 @@ int main(void)
                         break;
 
                     flash_full_rows();
-                    collapse_full_rows(leds, board);
+                    score += collapse_full_rows(leds, board);
 
                     shape_top = 0;
                     shape_offset = 3;

@@ -8,7 +8,8 @@ button rotates it. Holding the centre button drops the block quickly.
 
 The block fall rate gradually increases over time.
 
-At the moment there is no scoring.
+There is very rudimental scoring; 1 point is scored per completed row. The score is shown once
+the game ends (board is full).
 
 To program using a USPasp with `avrdude`, do:
 
