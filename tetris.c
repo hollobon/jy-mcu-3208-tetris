@@ -255,12 +255,12 @@ bool render_number(uint32_t number, byte board[32])
     uint32_t n = number;
 
     // calculate position of least significant digit
-    while (n) {
+    do {
         q = ldiv(n, 10);
         n = q.quot;
         c = numbers[q.rem];
         pos += c.columns + 1;
-    }
+    } while (n);
     pos -= 1;
 
     if (pos > 31)
@@ -268,7 +268,7 @@ bool render_number(uint32_t number, byte board[32])
         return false;
 
     // render
-    while (number) {
+    do {
         q = ldiv(number, 10);
         number = q.quot;
         c = numbers[q.rem];
@@ -276,7 +276,7 @@ bool render_number(uint32_t number, byte board[32])
             board[pos--] = c.bitmap[i];
         }
         pos--;
-    }
+    } while (number);
 
     return true;
 }
@@ -306,6 +306,7 @@ int main(void)
     uint8_t action;
     uint8_t key1_autorepeat = false;
     uint32_t score = 0;
+    bool first_run = true;
 
     HTpinsetup();
     HTsetup();
@@ -321,8 +322,9 @@ int main(void)
     while (1) {
         action = 0;
         memset(leds, 0, 32);
-        if (score)
+        if (!first_run)
             render_number(score, leds);
+        first_run = false;
         memcpy(board, leds, 32);
         set_timer(400, 0, true);
         while (1) {
