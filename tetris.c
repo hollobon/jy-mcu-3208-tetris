@@ -305,7 +305,7 @@ int main(void)
     uint8_t message;
     uint8_t action;
     uint8_t key1_autorepeat = false;
-    uint32_t score = 134;
+    uint32_t score = 0;
 
     HTpinsetup();
     HTsetup();
