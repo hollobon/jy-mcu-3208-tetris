@@ -8,3 +8,11 @@ GTAGS
 # Emacs
 *~
 \#*#
+*\.sym
+*\.hex
+*\.elf
+*\.eep
+*\.lss
+*\.map
+/obj_tetris
+/.dep
