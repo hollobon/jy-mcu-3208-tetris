@@ -310,7 +310,7 @@ bool render_string(char* string, byte board[32])
 #define MIN_DROP_INTERVAL 150
 #define DROP_INCREMENT 30
 
-uint8_t row_scores[] = {0, 1, 2, 5, 10};
+uint8_t row_scores[] = {0, 1, 4, 8, 16};
 
 int main(void)
 {
