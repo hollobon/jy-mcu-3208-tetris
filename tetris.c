@@ -289,6 +289,8 @@ bool render_number(uint32_t number, byte board[32])
 #define MIN_DROP_INTERVAL 150
 #define DROP_INCREMENT 30
 
+uint8_t row_scores[] = {0, 1, 2, 5, 10};
+
 int main(void)
 {
     uint8_t board[32];
@@ -403,7 +405,7 @@ int main(void)
                         break;
 
                     flash_full_rows();
-                    score += collapse_full_rows(leds, board);
+                    score += row_scores[collapse_full_rows(leds, board)];
 
                     shape_top = 0;
                     shape_offset = 3;
