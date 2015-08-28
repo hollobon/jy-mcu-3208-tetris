@@ -1,12 +1,7 @@
 #ifndef NUMBERS_H
 #define NUMBERS_H
 
-#define CHARDEF(bitmap) {bitmap, sizeof(bitmap)}
-
-typedef struct {
-    uint8_t *bitmap;
-    uint8_t columns;
-} character;
+#include "character.h"
 
 uint8_t _zero[] = {
     0b01111110,

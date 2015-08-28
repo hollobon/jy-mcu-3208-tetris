@@ -20,6 +20,7 @@
 #include "mq.h"
 #include "tetris.h"
 #include "numbers.h"
+#include "letters.h"
 
 #define M_KEY_DOWN 8
 #define M_KEY_UP 9
@@ -277,6 +278,26 @@ bool render_number(uint32_t number, byte board[32])
         }
         pos--;
     } while (number);
+
+    return true;
+}
+
+bool render_string(char* string, byte board[32])
+{
+    int pos = 1;
+    character *c;
+    while (*string) {
+        c = &letters[*string - 65];
+        for (int i = 0; i < c->columns; i++) {
+            board[pos++] = c->bitmap[i];
+            if (pos > 31)
+                return false;
+        }
+        pos++;
+        if (pos > 31)
+            return false;
+        string++;
+    }
 
     return true;
 }
