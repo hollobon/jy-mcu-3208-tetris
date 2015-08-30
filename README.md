@@ -8,8 +8,7 @@ button rotates it. Holding the centre button drops the block quickly.
 
 The block fall rate gradually increases over time.
 
-There is very rudimental scoring; 1 point is scored per completed row. The score is shown once
-the game ends (board is full).
+There is basic scoring; 1 point is scored per completed row, with 4, 8 and 16 points awarded for completing 2, 3 or 4 rows respectively. The score is shown once the game ends (when there is no space for a new block on the board).
 
 To program using a USPasp with `avrdude`, do:
 
