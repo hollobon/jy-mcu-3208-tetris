@@ -28,6 +28,7 @@
 
 #define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
 
+uint32_t EEMEM high_score_address = 0;
 volatile uint16_t clock_count = 0;
 
 void set_up_keys(void)
@@ -128,24 +129,6 @@ ISR (TIMER1_CAPT_vect)
     }
 
     clock_count++;
-}
-
-void intro(uint8_t board[32])
-{
-    int row = 0, height, shape_rotation, shape_selection, shape_offset;
-    uint8_t shape[4];
-    while (row < 32) {
-        shape_rotation = rand() % 4;
-        shape_selection = rand() % 7;
-        shape_offset = rand() % 5;
-        memcpy(shape, shapes[shape_selection][shape_rotation], 4);
-        offset_shape(shape, shape_offset);
-        for (height = 0; height < 4 && shape[height]; height++);
-        if (row + height > 31)
-            break;
-        overlay_shape(board, board, shape, row);
-        row += height + 1;
-    }
 }
 
 /* Copy the source board to the destination, overlaying shape at the row specified */
@@ -287,13 +270,17 @@ bool render_string(char* string, byte board[32])
     int pos = 1;
     character *c;
     while (*string) {
-        c = &letters[*string - 65];
-        for (int i = 0; i < c->columns; i++) {
-            board[pos++] = c->bitmap[i];
-            if (pos > 31)
-                return false;
+        if (*string == ' ')
+            pos += 3;
+        else {
+            c = &letters[*string - 65];
+            for (int i = 0; i < c->columns; i++) {
+                board[pos++] = c->bitmap[i];
+                if (pos > 31)
+                    return false;
+            }
+            pos++;
         }
-        pos++;
         if (pos > 31)
             return false;
         string++;
@@ -328,8 +315,8 @@ int main(void)
     uint8_t message;
     uint8_t action;
     uint8_t key1_autorepeat = false;
-    uint32_t score = 0;
-    bool first_run = true;
+    uint32_t score = 0, high_score = 0;
+    bool new_high_score = true;
 
     HTpinsetup();
     HTsetup();
@@ -339,17 +326,14 @@ int main(void)
     HTbrightness(1);
     memset(timers, 0, MAX_TIMERS);
 
-    intro(leds);
-    HTsendscreen();
+    score = eeprom_read_dword(&high_score_address);
 
     while (1) {
         action = 0;
         memset(leds, 0, 32);
-        if (!first_run)
-            render_number(score, leds);
-        first_run = false;
+        render_number(score, leds);
         memcpy(board, leds, 32);
-        set_timer(400, 0, true);
+        set_timer(900, 0, true);
         while (1) {
             if (mq_get(&message)) {
                 if (msg_get_event(message) == M_KEY_DOWN) {
@@ -366,6 +350,7 @@ int main(void)
                     }
                     else {
                         memset(leds, 0, 32);
+                        render_string(new_high_score ? "HI SCORE" : "SCORE", leds);
                         HTsendscreen();
                         action = 1;
                     }
@@ -375,6 +360,7 @@ int main(void)
         stop_timer(0);
 
         score = 0;
+        new_high_score = false;
         shape_top = 0;
         shape_offset = 3;
         shape_rotation = rand() % 4;
@@ -486,6 +472,12 @@ int main(void)
                 overlay_shape(board, leds, shape, shape_top);
                 HTsendscreen();
             }
+        }
+
+        high_score = eeprom_read_dword(&high_score_address);
+        if (score > high_score) {
+            eeprom_write_dword(&high_score_address, score);
+            new_high_score = true;
         }
     }
 }
