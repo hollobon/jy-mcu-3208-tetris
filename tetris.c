@@ -341,17 +341,14 @@ int main(void)
                     break;
                 }
                 else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
-                    if (action) {
+                    if (action)
                         memcpy(leds, board, 32);
-                        HTsendscreen();
-                        action = 0;
-                    }
                     else {
                         memset(leds, 0, 32);
                         render_string(new_high_score ? "HI SCORE" : "SCORE", leds);
-                        HTsendscreen();
-                        action = 1;
                     }
+                    HTsendscreen();
+                    action ^= 1;
                 }
             }
         }
