@@ -16,6 +16,14 @@ To program using a USPasp with `avrdude`, do:
 $ sudo avrdude -p m8 -c usbasp -U flash:w:tetris.hex
 ```
 
+To write the EEPROM, which currently just holds the high score, do:
+
+```
+$ sudo avrdude -p m8 -c usbasp -U eeprom:w:tetris.eep
+```
+
+This must be done the first time the program is loaded.
+
 Copyright (C) Pete Hollobon 2015.
 
 MIT Licenced.
