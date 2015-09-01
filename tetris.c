@@ -3,8 +3,6 @@
  * Copyright (C) Pete Hollobon 2015
  */
 
-#define F_CPU 8000000UL
-
 #include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/sleep.h>

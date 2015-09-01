@@ -1,5 +1,5 @@
+F_CPU = 8000000
 ARCH = AVR8
-
 MCU = atmega8
 
 TARGET = tetris
