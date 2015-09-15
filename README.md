@@ -10,6 +10,8 @@ The block fall rate gradually increases over time.
 
 There is basic scoring; 1 point is scored per completed row, with 4, 8 and 16 points awarded for completing 2, 3 or 4 rows respectively. The score is shown once the game ends (when there is no space for a new block on the board).
 
+There's a short video of it in action here: https://www.youtube.com/watch?v=NIG7UfFYCdY
+
 To program using a USPasp with `avrdude`, do:
 
 ```
@@ -27,5 +29,3 @@ This must be done the first time the program is loaded.
 Copyright (C) Pete Hollobon 2015.
 
 MIT Licenced.
-
-<iframe width="1280" height="720" src="https://www.youtube.com/embed/NIG7UfFYCdY" frameborder="0" allowfullscreen></iframe>
