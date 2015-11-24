@@ -65,14 +65,26 @@ void set_up_rand(void)
     eeprom_write_word(&rand_seed, seed_value + 1);
 }
 
-#define MAX_TIMERS 1 // max 16 due to timers_active and timers_recur bitfields
+#define MAX_TIMERS 1
+
+#if MAX_TIMERS > 32
+#error MAX_TIMERS must be <= 32
+typedef uint32_t timer_bitfield;
+#elif MAX_TIMERS > 16
+typedef uint32_t timer_bitfield;
+#elif MAX_TIMERS > 8
+typedef uint16_t timer_bitfield;
+#else
+typedef uint8_t timer_bitfield;
+#endif
+
 typedef struct {
     uint16_t ms;
     uint16_t end;
 } timer_t;
 timer_t timers[MAX_TIMERS];
-uint16_t timers_active = 0;
-uint16_t timers_recur = 0;
+timer_bitfield timers_active = 0;
+timer_bitfield timers_recur = 0;
 
 void set_timer(uint16_t ms, uint8_t n, bool recur)
 {
