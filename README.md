@@ -12,6 +12,8 @@ There is basic scoring: 1 point is scored per completed row, with 4, 8 and 16 po
 completing 2, 3 or 4 rows respectively. The score is shown once the game ends (when there is no
 space for a new block on the board).
 
+There's a short video of it in action here: https://www.youtube.com/watch?v=NIG7UfFYCdY
+
 To program using a USPasp with `avrdude`, do:
 
 ```
