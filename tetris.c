@@ -27,6 +27,7 @@
 #define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
 
 uint32_t EEMEM high_score_address = 0;
+uint8_t EEMEM high_score_name_address[3] = "---";
 volatile uint16_t clock_count = 0;
 
 void set_up_keys(void)
@@ -299,6 +300,45 @@ bool render_string(char* string, byte board[32])
     return true;
 }
 
+void read_name(char* name)
+{
+    uint8_t message;
+    int position = 0;
+    memset(name, 0, 4);
+    name[0] = 'A';
+
+    memset(leds, 0, 32);
+    render_string(name, leds);
+    HTsendscreen();
+
+    while (position < 3) {
+        if (mq_get(&message)) {
+            if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
+                switch (msg_get_param(message)) {
+                case 0:         /* left */
+                    if (name[position] > 'A')
+                        name[position]--;
+                    break;
+                case 1:         /* middle */
+                    position++;
+                    if (position < 3)
+                        name[position] = 'A';
+                    break;
+                case 2:         /* right */
+                    if (name[position] < 'Z')
+                        name[position]++;
+                    break;
+                }
+                memset(leds, 0, 32);
+                render_string(name, leds);
+                HTsendscreen();
+            }
+        }
+    }
+    memset(leds, 0, 32);
+    HTsendscreen();
+}
+
 #define MOVE_LEFT 1
 #define MOVE_RIGHT 2
 #define ROTATE 3
@@ -327,6 +367,7 @@ int main(void)
     uint8_t key1_autorepeat = false;
     uint32_t score = 0, high_score = 0;
     bool new_high_score = true;
+    char high_score_name[4];
 
     HTpinsetup();
     HTsetup();
@@ -337,8 +378,11 @@ int main(void)
     memset(timers, 0, MAX_TIMERS);
 
     score = eeprom_read_dword(&high_score_address);
+    eeprom_read_block(high_score_name, &high_score_name_address, 3);
+    high_score_name[3] = 0;
 
     while (1) {
+        // Flash score / high score until a button is pressed
         action = 0;
         memset(leds, 0, 32);
         render_number(score, leds);
@@ -353,14 +397,28 @@ int main(void)
                     break;
                 }
                 else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
-                    if (action)
-                        memcpy(leds, board, 32);
-                    else {
+                    if (action == 0) { /* show "score" / "hi score" */
                         memset(leds, 0, 32);
-                        render_string(new_high_score ? "HI SCORE" : "SCORE", leds);
+                        if (new_high_score) {
+                            render_string("HI SCORE", leds);
+                            action = 1;
+                        }
+                        else {
+                            render_string("SCORE", leds);
+                            action = 2;
+                        }
                     }
+                    else if (action == 1) { /* show high score name */
+                        memset(leds, 0, 32);
+                        render_string(high_score_name, leds);
+                        action = 2;
+                    }
+                    else if (action == 2) { /* show score */
+                        memcpy(leds, board, 32);
+                        action = 0;
+                    }
+
                     HTsendscreen();
-                    action ^= 1;
                 }
             }
         }
@@ -379,6 +437,7 @@ int main(void)
         last_block_move_clock = clock_count;
         last_drop_reduction_clock = clock_count;
 
+        // Main game loop
         while (1) {
             if (drop_interval > MIN_DROP_INTERVAL && clock_count - last_drop_reduction_clock > 15000) {
                 drop_interval -= DROP_INCREMENT;
@@ -483,6 +542,8 @@ int main(void)
 
         high_score = eeprom_read_dword(&high_score_address);
         if (score > high_score) {
+            read_name(high_score_name);
+            eeprom_update_block(high_score_name, &high_score_name_address, 3);
             eeprom_write_dword(&high_score_address, score);
             new_high_score = true;
         }
