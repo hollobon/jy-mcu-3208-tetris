@@ -304,6 +304,8 @@ void read_name(char* name)
 {
     uint8_t message;
     int position = 0;
+    char current_char = 'A';
+    bool show_current_char = true;
     memset(name, 0, 4);
     name[0] = 'A';
 
@@ -311,30 +313,58 @@ void read_name(char* name)
     render_string(name, leds);
     HTsendscreen();
 
+    set_timer(250, 0, true);
     while (position < 3) {
         if (mq_get(&message)) {
-            if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
-                switch (msg_get_param(message)) {
-                case 0:         /* left */
-                    if (name[position] > 'A')
-                        name[position]--;
-                    break;
-                case 1:         /* middle */
-                    position++;
-                    if (position < 3)
-                        name[position] = 'A';
-                    break;
-                case 2:         /* right */
-                    if (name[position] < 'Z')
-                        name[position]++;
-                    break;
+            if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
+                if (show_current_char) {
+                    name[position] = current_char;
                 }
+                else {
+                    name[position] = 0;
+                }
+
+                show_current_char ^= true;
                 memset(leds, 0, 32);
                 render_string(name, leds);
                 HTsendscreen();
             }
+            else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
+                switch (msg_get_param(message)) {
+                case 0:         /* left */
+                    if (current_char > 'A')
+                        current_char--;
+                    break;
+                case 2:         /* right */
+                    if (current_char < 'Z')
+                        current_char++;
+                    break;
+                }
+                name[position] = current_char;
+                show_current_char = false;
+                set_timer(250, 0, true);
+
+                memset(leds, 0, 32);
+                render_string(name, leds);
+                HTsendscreen();
+            }
+            if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == 1) {
+                name[position] = current_char;
+                position++;
+                if (position < 3) {
+                    current_char = 'A';
+                    name[position] = current_char;
+                    show_current_char = false;
+                    set_timer(250, 0, true);
+
+                    memset(leds, 0, 32);
+                    render_string(name, leds);
+                    HTsendscreen();
+                }
+            }
         }
     }
+    stop_timer(0);
     memset(leds, 0, 32);
     HTsendscreen();
 }
