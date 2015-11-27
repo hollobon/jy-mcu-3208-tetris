@@ -101,11 +101,14 @@ void stop_timer(uint8_t n)
     timers_active &= ~(1 << n);
 }
 
+#define DEBOUNCE_TIME 10
+
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
 ISR (TIMER1_CAPT_vect)
 {
     typedef enum {down, up} key_state;
     static key_state last_state[3] = {up, up, up};
+    static bool steady_state[3] = {true, true, true};
     static bool key_repeating[3] = {false, false, false};
     static uint16_t state_change_clock[3] = {0, 0, 0};
     static uint16_t repeat_initial_delay[3] = {300, 300, 300};
@@ -116,18 +119,29 @@ ISR (TIMER1_CAPT_vect)
             if (last_state[key] == up) {
                 state_change_clock[key] = clock_count;
                 last_state[key] = down;
-                mq_put(msg_create(M_KEY_DOWN, key));
+                steady_state[key] = false;
             }
             else if (clock_count - state_change_clock[key] > (key_repeating[key] ? repeat_subsequent_delay[key] : repeat_initial_delay[key])) {
                 state_change_clock[key] = clock_count;
                 mq_put(msg_create(M_KEY_REPEAT, key));
                 key_repeating[key] = true;
             }
+            else if (!steady_state[key] && clock_count - state_change_clock[key] > DEBOUNCE_TIME) {
+                mq_put(msg_create(M_KEY_DOWN, key));
+                steady_state[key] = true;
+            }
         }
-        else if (last_state[key] == down) {
-            last_state[key] = up;
-            mq_put(msg_create(M_KEY_UP, key));
-            key_repeating[key] = false;
+        else {
+            if (last_state[key] == down) {
+                last_state[key] = up;
+                steady_state[key] = false;
+                state_change_clock[key] = clock_count;
+            }
+            else if (!steady_state[key] && clock_count - state_change_clock[key] > DEBOUNCE_TIME) {
+                mq_put(msg_create(M_KEY_UP, key));
+                steady_state[key] = true;
+                key_repeating[key] = false;
+            }
         }
     }
 
