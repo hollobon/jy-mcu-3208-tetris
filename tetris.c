@@ -104,26 +104,28 @@ void stop_timer(uint8_t n)
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
 ISR (TIMER1_CAPT_vect)
 {
-    static bool key_seen[3] = {false, false, false};
+    typedef enum {down, up} key_state;
+    static key_state last_state[3] = {up, up, up};
     static bool key_repeating[3] = {false, false, false};
-    static uint16_t key_clock[3] = {0, 0, 0};
-    static uint16_t repeat_delay[3] = {300, 50, 300};
+    static uint16_t state_change_clock[3] = {0, 0, 0};
+    static uint16_t repeat_initial_delay[3] = {300, 300, 300};
+    static uint16_t repeat_subsequent_delay[3] = {200, 50, 200};
 
     for (int key = 0; key < 3; key++) {
         if (key_down(key)) {
-            if (!key_seen[key]) {
-                key_clock[key] = clock_count;
-                key_seen[key] = true;
+            if (last_state[key] == up) {
+                state_change_clock[key] = clock_count;
+                last_state[key] = down;
                 mq_put(msg_create(M_KEY_DOWN, key));
             }
-            else if (clock_count - key_clock[key] > (key_repeating[key] ? repeat_delay[key] : 300)) {
-                key_clock[key] = clock_count;
+            else if (clock_count - state_change_clock[key] > (key_repeating[key] ? repeat_subsequent_delay[key] : repeat_initial_delay[key])) {
+                state_change_clock[key] = clock_count;
                 mq_put(msg_create(M_KEY_REPEAT, key));
                 key_repeating[key] = true;
             }
         }
-        else if (key_seen[key]) {
-            key_seen[key] = false;
+        else if (last_state[key] == down) {
+            last_state[key] = up;
             mq_put(msg_create(M_KEY_UP, key));
             key_repeating[key] = false;
         }
