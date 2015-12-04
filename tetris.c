@@ -390,8 +390,9 @@ void read_name(char* name)
 #define ROTATE 3
 #define DROP 4
 
+#define INITIAL_DROP_INTERVAL 600
 #define MIN_DROP_INTERVAL 150
-#define DROP_INCREMENT 30
+#define DROP_INTERVAL_INCREMENT 30
 
 uint8_t row_scores[] = {0, 1, 4, 8, 16};
 
@@ -405,13 +406,12 @@ int main(void)
     uint8_t shape_width;
     uint8_t shape[4], proposed_shape[4];
     unsigned int last_block_move_clock;
-    unsigned int drop_interval = 600;
-    unsigned int last_drop_reduction_clock;
+    unsigned int drop_interval = INITIAL_DROP_INTERVAL;
     bool update_shape;
     uint8_t message;
     uint8_t action;
     uint8_t key1_autorepeat = false;
-    uint32_t score = 0, high_score = 0;
+    uint32_t score = 0, high_score = 0, lines = 0;
     bool new_high_score = true;
     char high_score_name[4];
 
@@ -481,13 +481,11 @@ int main(void)
         offset_shape(shape, shape_offset);
 
         last_block_move_clock = clock_count;
-        last_drop_reduction_clock = clock_count;
 
         // Main game loop
         while (1) {
-            if (drop_interval > MIN_DROP_INTERVAL && clock_count - last_drop_reduction_clock > 15000) {
-                drop_interval -= DROP_INCREMENT;
-                last_drop_reduction_clock = clock_count;
+            if (drop_interval > MIN_DROP_INTERVAL) {
+                drop_interval = INITIAL_DROP_INTERVAL - ((lines / 10) * DROP_INTERVAL_INCREMENT);
             }
 
             action = 0;
@@ -519,12 +517,16 @@ int main(void)
             if (action == DROP || (clock_count - last_block_move_clock) > drop_interval) {
                 last_block_move_clock = clock_count;
                 if (test_collision(board, shape, shape_top + 1)) {
+                    uint8_t rows_cleared;
+
                     if (shape_top == 0)
                         // Game over
                         break;
 
                     flash_full_rows();
-                    score += row_scores[collapse_full_rows(leds, board)];
+                    rows_cleared = collapse_full_rows(leds, board);
+                    score += row_scores[rows_cleared];
+                    lines += rows_cleared;
 
                     shape_top = 0;
                     shape_offset = 3;
