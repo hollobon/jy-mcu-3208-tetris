@@ -37,6 +37,8 @@ void set_up_keys(void)
 
     /* Turn on pull-up resistors on high 3 bits */
     PORTD |= 0b11100000;
+
+    DDRC |= 1 << 5;
 }
 
 void set_up_timer(void)
@@ -53,6 +55,9 @@ void set_up_timer(void)
     // Set interrupt on compare match
     TIMSK = (1 << TICIE1);
 
+    // timer 2: CTC, OCR2 as TOP, clock / 256
+    TCCR2 |= _BV(WGM21) | _BV(CS22) | _BV(CS21);
+
     sei();
 }
 
@@ -66,7 +71,7 @@ void set_up_rand(void)
     eeprom_write_word(&rand_seed, seed_value + 1);
 }
 
-#define MAX_TIMERS 1
+#define MAX_TIMERS 2
 
 #if MAX_TIMERS > 32
 #error MAX_TIMERS must be <= 32
@@ -102,6 +107,8 @@ void stop_timer(uint8_t n)
 }
 
 #define DEBOUNCE_TIME 10
+
+#include "tune.h"
 
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
 ISR (TIMER1_CAPT_vect)
@@ -156,6 +163,12 @@ ISR (TIMER1_CAPT_vect)
     }
 
     clock_count++;
+}
+
+/* Interrupt handler for timer2. Bitbangs a square wave for audio */
+ISR (TIMER2_COMP_vect)
+{
+    PORTC ^= 1 << 5;
 }
 
 /* Copy the source board to the destination, overlaying shape at the row specified */
@@ -385,6 +398,37 @@ void read_name(char* name)
     HTsendscreen();
 }
 
+int tune_location = 0;
+
+void stop_music(void)
+{
+    // no interrupt on timer 2 compare match
+    TIMSK &= ~_BV(OCIE2);
+    stop_timer(1);
+}
+
+void start_music(void)
+{
+    tune_location = 0;
+
+    // interrupt on timer 2 compare match
+    TIMSK |= _BV(OCIE2);
+
+    set_timer(100, 1, false);
+}
+
+void handle_music(void)
+{
+    note n = tune[tune_location];
+
+    OCR2 = note_clocks[n.note];
+    set_timer(n.time * 2, 1, false);
+
+    tune_location++;
+    if (tune_location > TUNE_LENGTH)
+        tune_location = 0;
+}
+
 #define MOVE_LEFT 1
 #define MOVE_RIGHT 2
 #define ROTATE 3
@@ -434,6 +478,7 @@ int main(void)
         render_number(score, leds);
         memcpy(board, leds, 32);
         set_timer(900, 0, true);
+        start_music();
         while (1) {
             if (mq_get(&message)) {
                 if (msg_get_event(message) == M_KEY_DOWN) {
@@ -441,6 +486,9 @@ int main(void)
                     memset(board, 0, 32);
                     HTsendscreen();
                     break;
+                }
+                else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 1) {
+                    handle_music();
                 }
                 else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
                     if (action == 0) { /* show "score" / "hi score" */
@@ -469,6 +517,7 @@ int main(void)
             }
         }
         stop_timer(0);
+        stop_music();
 
         score = 0;
         new_high_score = false;
@@ -490,27 +539,28 @@ int main(void)
 
             action = 0;
             if (mq_get(&message)) {
-                if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
+                if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 1) {
+                    handle_music();
+                }
+                else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
                     switch (msg_get_param(message)) {
                     case 0:
                         action = MOVE_LEFT;
                         break;
                     case 2:
                         action = MOVE_RIGHT;
+                        break;
                     }
                 }
-                if (msg_get_param(message) == 1) {
-                    if (msg_get_event(message) == M_KEY_REPEAT) {
-                        key1_autorepeat = true;
-                        action = DROP;
-                    }
-
-                    else if (msg_get_event(message) == M_KEY_UP) {
-                        if (key1_autorepeat)
-                            key1_autorepeat = false;
-                        else
-                            action = ROTATE;
-                    }
+                if (msg_get_event(message) == M_KEY_REPEAT && msg_get_param(message) == 1) {
+                    key1_autorepeat = true;
+                    action = DROP;
+                }
+                else if (msg_get_event(message) == M_KEY_UP && msg_get_param(message) == 1) {
+                    if (key1_autorepeat)
+                        key1_autorepeat = false;
+                    else
+                        action = ROTATE;
                 }
             }
 
