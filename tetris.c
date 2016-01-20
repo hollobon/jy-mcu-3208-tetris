@@ -146,7 +146,7 @@ ISR (TIMER1_CAPT_vect)
     }
 
     for (int timer = 0; timer < MAX_TIMERS; timer++) {
-        if (timers_active & (1 << timer) && clock_count > timers[timer].end) {
+        if (timers_active & (1 << timer) && clock_count == timers[timer].end) {
             if (!(timers_recur & (1 << timer)))
                 stop_timer(timer);
             else
