@@ -331,7 +331,7 @@ bool render_string(char* string, byte board[32])
 
 void read_name(char* name)
 {
-    uint8_t message;
+    message_t message;
     int position = 0;
     char current_char = 'A';
     bool show_current_char = true;
@@ -452,7 +452,7 @@ int main(void)
     unsigned int last_block_move_clock;
     unsigned int drop_interval = INITIAL_DROP_INTERVAL;
     bool update_shape;
-    uint8_t message;
+    message_t message;
     uint8_t action;
     uint8_t key1_autorepeat = false;
     uint32_t score = 0, high_score = 0, lines = 0;

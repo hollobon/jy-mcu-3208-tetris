@@ -7,11 +7,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-volatile uint8_t _mq[MQ_SIZE];
+volatile message_t _mq[MQ_SIZE];
 volatile uint8_t _mq_front = 0;
 volatile uint8_t _mq_back = 0;
 
-bool mq_put(uint8_t value)
+bool mq_put(message_t value)
 {
     if (mq_space < 1)
         return false;
@@ -21,7 +21,7 @@ bool mq_put(uint8_t value)
     return true;
 }
 
-bool mq_get(uint8_t *value)
+bool mq_get(message_t *value)
 {
     if (mq_empty)
         return false;
