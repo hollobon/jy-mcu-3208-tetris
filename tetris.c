@@ -27,7 +27,7 @@
 #define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
 
 uint32_t EEMEM high_score_address = 0;
-uint8_t EEMEM high_score_name_address[3] = "---";
+uint8_t EEMEM high_score_name_address[3] = "   ";
 volatile uint16_t clock_count = 0;
 
 void set_up_keys(void)
