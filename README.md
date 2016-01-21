@@ -16,7 +16,8 @@ It plays "Korobeiniki" whilst showing the current score or high score. A small s
 connected to pin PC5, which is brought out to the top left of the four solder pads to the left of
 the barrel connector, when looking at the board with the barrel connector facing you.
 
-There's a short video of it in action here: https://www.youtube.com/watch?v=NIG7UfFYCdY
+There's a short video of it in action here: https://www.youtube.com/watch?v=NIG7UfFYCdY, and one
+of it playing the tune here: https://youtu.be/IWl2IR9MG48.
 
 To program using a USPasp with `avrdude`, do:
 
