@@ -97,6 +97,8 @@ void set_timer(uint16_t ms, uint8_t n, bool recur)
     timers_active |= 1 << n;
     if (recur)
         timers_recur |= 1 << n;
+    else
+        timers_recur &= ~(1 << n);
     timers[n].ms = ms;
     timers[n].end = clock_count + ms;
 }
