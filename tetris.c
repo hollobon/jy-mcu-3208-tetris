@@ -461,8 +461,6 @@ int main(void)
     uint8_t shape_selection;
     uint8_t shape_width;
     uint8_t shape[4], proposed_shape[4];
-    unsigned int last_block_move_clock;
-    unsigned int drop_interval = INITIAL_DROP_INTERVAL;
     bool update_shape;
     message_t message;
     uint8_t action;
@@ -541,18 +539,21 @@ int main(void)
         memcpy(shape, shapes[shape_selection][shape_rotation], 4);
         offset_shape(shape, shape_offset);
 
-        last_block_move_clock = clock_count;
+        set_timer(INITIAL_DROP_INTERVAL, 0, true);
 
         // Main game loop
         while (1) {
-            if (drop_interval > MIN_DROP_INTERVAL) {
-                drop_interval = INITIAL_DROP_INTERVAL - ((lines / 10) * DROP_INTERVAL_INCREMENT);
-            }
-
             action = 0;
             if (mq_get(&message)) {
-                if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 1) {
-                    handle_music();
+                if (msg_get_event(message) == M_TIMER) {
+                    switch (msg_get_param(message)) {
+                    case 0:
+                        action = DROP;
+                        break;
+                    case 1:
+                        handle_music();
+                        break;
+                    }
                 }
                 else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
                     switch (msg_get_param(message)) {
@@ -576,8 +577,7 @@ int main(void)
                 }
             }
 
-            if (action == DROP || (clock_count - last_block_move_clock) > drop_interval) {
-                last_block_move_clock = clock_count;
+            if (action == DROP) {
                 if (test_collision(board, shape, shape_top + 1)) {
                     uint8_t rows_cleared;
 
@@ -589,6 +589,7 @@ int main(void)
                     rows_cleared = collapse_full_rows(leds, board);
                     score += row_scores[rows_cleared];
                     lines += rows_cleared;
+                    set_timer(0, INITIAL_DROP_INTERVAL - ((lines / 10) * DROP_INTERVAL_INCREMENT), true);
 
                     shape_top = 0;
                     shape_offset = 3;
@@ -649,6 +650,8 @@ int main(void)
                 HTsendscreen();
             }
         }
+
+        stop_timer(0);
 
         high_score = eeprom_read_dword(&high_score_address);
         if (score > high_score) {
