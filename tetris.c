@@ -314,6 +314,8 @@ bool render_string(char* string, byte board[32])
     while (*string) {
         if (*string == ' ')
             pos += 3;
+        else if (*string < 'A' || *string > 'Z')
+            return false;
         else {
             c = &letters[*string - 65];
             for (int i = 0; i < c->columns; i++) {
