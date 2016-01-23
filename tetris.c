@@ -7,6 +7,7 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 #include <util/delay.h>
 
 #include <stdint.h>
@@ -94,18 +95,25 @@ timer_bitfield timers_recur = 0;
 
 void set_timer(uint16_t ms, uint8_t n, bool recur)
 {
-    timers_active |= 1 << n;
-    if (recur)
-        timers_recur |= 1 << n;
-    else
-        timers_recur &= ~(1 << n);
-    timers[n].ms = ms;
-    timers[n].end = clock_count + ms;
+    ATOMIC_BLOCK(ATOMIC_FORCEON)
+    {
+        if (recur)
+            timers_recur |= 1 << n;
+        else
+            timers_recur &= ~(1 << n);
+
+        timers[n].ms = ms;
+        timers[n].end = clock_count + ms;
+        timers_active |= 1 << n;
+    }
 }
 
 void stop_timer(uint8_t n)
 {
-    timers_active &= ~(1 << n);
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        timers_active &= ~(1 << n);
+    }
 }
 
 #define DEBOUNCE_TIME 10
