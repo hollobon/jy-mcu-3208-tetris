@@ -434,7 +434,7 @@ void handle_music(void)
     note n = tune[tune_location];
 
     OCR2 = note_clocks[n.note];
-    set_timer(n.time * 2, 1, false);
+    set_timer((n.time + 1) * 2 * NOTE_LENGTH_MULTIPLIER, 1, false);
 
     tune_location++;
     if (tune_location > TUNE_LENGTH)
