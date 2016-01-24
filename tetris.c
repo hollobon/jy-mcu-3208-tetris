@@ -122,7 +122,7 @@ void stop_timer(uint8_t n)
 #include "tune.h"
 
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
-ISR (TIMER1_CAPT_vect)
+ISR (TIMER1_CAPT_vect, ISR_NOBLOCK)
 {
     typedef enum {down, up} key_state;
     static key_state last_state[3] = {up, up, up};
