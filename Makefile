@@ -9,6 +9,6 @@ SRC = tetris.c mq.c ht1632c.c
 all: tune.h
 
 tune.h: create_music.py
-	python create_music.py ${F_CPU} > tune.h || rm tune.h
+	python create_music.py ${F_CPU} > tune.h || (rm tune.h && false)
 
 include rules.mk
