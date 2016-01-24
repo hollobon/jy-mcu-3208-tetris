@@ -7,6 +7,7 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 #include <util/atomic.h>
 #include <util/delay.h>
 
@@ -431,7 +432,8 @@ void start_music(void)
 
 void handle_music(void)
 {
-    note n = tune[tune_location];
+    note n;
+    n.decode = pgm_read_byte(&(tune[tune_location]));
 
     OCR2 = note_clocks[n.note];
     set_timer((n.time + 1) * 2 * NOTE_LENGTH_MULTIPLIER, 1, false);
