@@ -1,5 +1,7 @@
 import os
 import sys
+from fractions import gcd
+from functools import reduce
 
 import midi
 
@@ -10,7 +12,10 @@ def filter_track(track):
     for n, e in enumerate(track):
         if isinstance(e, midi.NoteOnEvent) and ((midi.C_4 > e.pitch < midi.C_7) or e.velocity == 0):
             continue
-        if isinstance(e, midi.NoteOnEvent) and len(newtrack) > 0 and isinstance(newtrack[-1], midi.NoteOnEvent) and e.tick - last_tick == 0:
+        if isinstance(e, midi.NoteOnEvent) \
+           and len(newtrack) > 0 \
+           and isinstance(newtrack[-1], midi.NoteOnEvent) \
+           and e.tick - last_tick == 0:
             if e.pitch > newtrack[-1].pitch:
                 newtrack[-1].pitch = e.pitch
         else:
@@ -51,12 +56,17 @@ def main():
     print("} note;")
     print
     print("uint8_t note_clocks[] = {")
-    print("\n".join("    %d, // %s" % (round((cpufreq / TIMER_DIVISOR / 2) / note_frequency(note)), midi.NOTE_VALUE_MAP_SHARP[note].replace("_", "").replace("s", "#")) for note in note_map))
+    print("\n".join("    %d, // %s" % (round((cpufreq / TIMER_DIVISOR / 2) / note_frequency(note)),
+                                       midi.NOTE_VALUE_MAP_SHARP[note].replace("_", "").replace("s", "#"))
+                    for note in note_map))
     print("};")
     print
     print("note tune[] = {")
     track_notes = [event for event in track if isinstance(event, midi.NoteOnEvent)]
-    print("\n".join("    {%d, %d}, // %s" % (note_map[event.pitch], nextevent.tick, midi.NOTE_VALUE_MAP_SHARP[event.pitch]) for event, nextevent in zip(track_notes, track_notes[1:])))
+    print("\n".join("    {%d, %d}, // %s" % (note_map[event.pitch],
+                                             nextevent.tick,
+                                             midi.NOTE_VALUE_MAP_SHARP[event.pitch])
+                    for event, nextevent in zip(track_notes, track_notes[1:])))
     print("};")
     print("#define TUNE_LENGTH %d" % (len(track_notes) - 1))
     print
