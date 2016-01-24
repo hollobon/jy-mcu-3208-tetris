@@ -28,7 +28,7 @@ def note_frequency(note):
     return 440 * (2.0 ** ((note - midi.A_4) / 12.0))
 
 
-TIMER_DIVISOR = 256
+TIMER_DIVISOR = 64
 
 
 def main():
