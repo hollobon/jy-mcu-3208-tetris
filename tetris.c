@@ -197,9 +197,9 @@ void overlay_shape(uint8_t src[32], uint8_t dest[32], uint8_t shape[4], uint8_t 
 /* Offset a shape to the right by a positive number of pixels */
 void offset_shape(uint8_t shape[4], uint8_t n)
 {
-    int row;
+    uint8_t row;
     for (row = 0; row < 4; row++)
-        shape[row] >>= n;
+        *shape++ >>= n;
 }
 
 /* Test if overlaying the shape on the board at the specified line would
