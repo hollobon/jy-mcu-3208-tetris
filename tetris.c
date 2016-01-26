@@ -186,12 +186,8 @@ ISR (TIMER2_COMP_vect)
 void overlay_shape(uint8_t src[32], uint8_t dest[32], uint8_t shape[4], uint8_t shape_top)
 {
     int n;
-    for (n = 0; n < 32; n++) {
-        if (n >= shape_top && n - shape_top < 4)
-            dest[n] = src[n] | shape[n - shape_top];
-        else
-            dest[n] = src[n];
-    }
+    for (n = 0; n < 32; n++)
+        *dest++ = *src++ | ((n >= shape_top && n - shape_top < 4) ? shape[n - shape_top] : 0);
 }
 
 /* Offset a shape to the right by a positive number of pixels */
