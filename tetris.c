@@ -266,20 +266,17 @@ int collapse_full_rows(uint8_t src[32], uint8_t dest[32])
 }
 
 /* Get the "width" of a shape: the column number of the rightmost set pixel */
-uint8_t get_shape_width(uint8_t shape[4])
+uint8_t get_shape_width(const uint8_t shape[4])
 {
-    uint8_t min = 8;
-    uint8_t row, bit;
-    for (row = 0; row < 4; row++) {
-        for (bit = 0; bit < 8; bit++) {
-            if (shape[row] & (1 << bit)) {
-                if (bit < min)
-                    min = bit;
-                break;
-            }
-        }
+    uint8_t bit, value = 1;
+    uint8_t all = shape[0] | shape[1] | shape[2] | shape[3];
+
+    for (bit = 0; bit < 8; bit++) {
+        if (all & value)
+            return 8 - bit;
+        value <<= 1;
     }
-    return 8 - min;
+    return 0;
 }
 
 bool render_number(uint32_t number, byte board[32])
