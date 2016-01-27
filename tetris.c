@@ -566,6 +566,7 @@ int main(void)
             }
 
             if (action == DROP) {
+                // erase previous shape
                 overlay_shape(leds, shape, shape_top);
                 
                 if (test_collision(leds, shape, shape_top + 1)) {
@@ -575,6 +576,7 @@ int main(void)
                         // Game over
                         break;
 
+                    // draw back shape, as it has landed now
                     overlay_shape(leds, shape, shape_top);
 
                     flash_full_rows();
@@ -595,6 +597,7 @@ int main(void)
                     shape_top++;
                 }
 
+                // overlay new falling shape
                 overlay_shape(leds, shape, shape_top);
                 HTsendscreen();
             }
@@ -631,6 +634,7 @@ int main(void)
                 memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
                 offset_shape(proposed_shape, proposed_shape_offset);
 
+                // erase shape in previous position
                 overlay_shape(leds, shape, shape_top);
 
                 if (!test_collision(leds, proposed_shape, shape_top)) {
@@ -640,6 +644,7 @@ int main(void)
                     shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
                 }
 
+                // overlay shape in new position
                 overlay_shape(leds, shape, shape_top);
                 HTsendscreen();
             }
