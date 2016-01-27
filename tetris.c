@@ -264,15 +264,11 @@ int collapse_full_rows(uint8_t src[32], uint8_t dest[32])
 /* Get the "width" of a shape: the column number of the rightmost set pixel */
 uint8_t get_shape_width(const uint8_t shape[4])
 {
-    uint8_t bit, value = 1;
-    uint8_t all = shape[0] | shape[1] | shape[2] | shape[3];
+    uint8_t all, bit = 8;
 
-    for (bit = 0; bit < 8; bit++) {
-        if (all & value)
-            return 8 - bit;
-        value <<= 1;
-    }
-    return 0;
+    for (all = shape[0] | shape[1] | shape[2] | shape[3]; all && !(all & 1); all >>= 1)
+        bit--;
+    return bit;
 }
 
 bool render_number(uint32_t number, byte board[32])
