@@ -335,7 +335,7 @@ bool render_string(const char* string, byte board[32])
 void read_name(char* name)
 {
     message_t message;
-    int position = 0;
+    uint8_t position = 0;
     char current_char = 'A';
     bool show_current_char = true;
     memset(name, 0, 4);
@@ -401,7 +401,7 @@ void read_name(char* name)
     HTsendscreen();
 }
 
-int tune_location = 0;
+uint8_t tune_location = 0;
 
 void stop_music(void)
 {
