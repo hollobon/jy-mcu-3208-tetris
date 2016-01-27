@@ -35,17 +35,18 @@
 #define ROTATE 3
 #define DROP 4
 
+// Difficulty configuration
 #define INITIAL_DROP_INTERVAL 600
 #define MIN_DROP_INTERVAL 150
 #define DROP_INTERVAL_INCREMENT 30
-#define LINES
+#define INTERVAL_DECREASE_LINES 10
+
+const uint8_t row_scores[] PROGMEM = {0, 1, 4, 8, 16};
 
 #define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
 
 uint32_t EEMEM high_score_address = 0;
 uint8_t EEMEM high_score_name_address[3] = "   ";
-
-const uint8_t row_scores[] PROGMEM = {0, 1, 4, 8, 16};
 
 void set_up_keys(void)
 {
@@ -497,9 +498,9 @@ int main(void)
                     rows_cleared = collapse_full_rows(leds);
                     score += pgm_read_byte(&(row_scores[rows_cleared]));
                     drop_interval_line_count += rows_cleared;
-                    if (drop_interval_line_count >= 10 && drop_interval > MIN_DROP_INTERVAL) {
+                    if (drop_interval_line_count >= INTERVAL_DECREASE_LINES && drop_interval > MIN_DROP_INTERVAL) {
                         drop_interval -= DROP_INTERVAL_INCREMENT;
-                        drop_interval_line_count -= 10;
+                        drop_interval_line_count -= INTERVAL_DECREASE_LINES;
                         set_timer(drop_interval, 0, true);
                     }
                     shape_top = 0;
