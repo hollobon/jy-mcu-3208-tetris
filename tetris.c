@@ -582,7 +582,7 @@ int main(void)
                     rows_cleared = collapse_full_rows(leds);
                     score += row_scores[rows_cleared];
                     lines += rows_cleared;
-                    set_timer(0, INITIAL_DROP_INTERVAL - ((lines / 10) * DROP_INTERVAL_INCREMENT), true);
+                    set_timer(INITIAL_DROP_INTERVAL - ((lines / 10) * DROP_INTERVAL_INCREMENT), 0, true);
 
                     shape_top = 0;
                     shape_offset = 3;
