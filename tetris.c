@@ -222,7 +222,7 @@ bool test_collision(uint8_t board[32], uint8_t shape[4], uint8_t line)
 void flash_full_rows(void)
 {
     int row;
-    int flash_count;
+    uint8_t flash_count;
     uint32_t flash_rows = 0;
 
     for (row = 0; row < 32; row++) {
