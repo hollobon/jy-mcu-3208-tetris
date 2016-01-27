@@ -524,8 +524,6 @@ int main(void)
             case MOVE_LEFT:
                 if (shape_offset > 0) {
                     proposed_shape_offset = shape_offset - 1;
-                    if (proposed_shape_offset < 0)
-                        proposed_shape_offset = 0;
                     proposed_shape_rotation = shape_rotation;
                     update_shape = true;
                 }
