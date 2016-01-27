@@ -182,12 +182,12 @@ ISR (TIMER2_COMP_vect)
     PORTC ^= 1 << 5;
 }
 
-/* Copy the source board to the destination, overlaying shape at the row specified */
-void overlay_shape(uint8_t src[32], uint8_t dest[32], uint8_t shape[4], uint8_t shape_top)
+/* Overlay shape at the row specified using XOR */
+void overlay_shape(uint8_t board[32], uint8_t shape[4], uint8_t shape_top)
 {
-    int n;
-    for (n = 0; n < 32; n++)
-        *dest++ = *src++ | ((n >= shape_top && n - shape_top < 4) ? shape[n - shape_top] : 0);
+    uint8_t n;
+    for (n = 0; n < 4; n++)
+        board[shape_top + n] ^= shape[n];
 }
 
 /* Offset a shape to the right by a positive number of pixels */
@@ -201,7 +201,7 @@ void offset_shape(uint8_t shape[4], uint8_t n)
 /* Test if overlaying the shape on the board at the specified line would
  * result in a collision
  */
-bool test_collision(uint8_t board[32], uint8_t shape[4], uint8_t line)
+bool test_collision(const uint8_t board[32], const uint8_t shape[4], uint8_t line)
 {
     uint8_t shape_length = 0;
     uint8_t n;
@@ -245,14 +245,12 @@ void flash_full_rows(void)
 /* Copy the source board to the destination, omitting any complete rows
  * Returns the number of completed rows that were collapsed
  */
-uint8_t collapse_full_rows(uint8_t src[32], uint8_t dest[32])
+uint8_t collapse_full_rows(uint8_t dest[32])
 {
-    int8_t src_index, dest_index;
-
-    dest_index = 31;
-    for (src_index = 31; src_index >= 0; src_index--) {
-        if (src[src_index] != 0xff)
-            dest[dest_index--] = src[src_index];
+    int8_t src_index = 31, dest_index = 31;
+    for (; src_index >= 0; src_index--) {
+        if (dest[src_index] != 0xff)
+            dest[dest_index--] = dest[src_index];
     }
     src_index = dest_index + 1;
     while (dest_index >= 0)
@@ -286,7 +284,7 @@ bool render_number(uint32_t number, byte board[32])
         c = &numbers[q.rem];
         pos += c->columns + 1;
     } while (n);
-    pos -= 1;
+    pos--;
 
     if (pos > 31)
         // overflows board
@@ -446,7 +444,6 @@ uint8_t row_scores[] = {0, 1, 4, 8, 16};
 
 int main(void)
 {
-    uint8_t board[32];
     uint8_t shape_top;
     uint8_t shape_offset, proposed_shape_offset;
     uint8_t shape_rotation, proposed_shape_rotation;
@@ -477,15 +474,12 @@ int main(void)
         // Flash score / high score until a button is pressed
         action = 0;
         memset(leds, 0, 32);
-        render_number(score, leds);
-        memcpy(board, leds, 32);
         set_timer(900, 0, true);
         start_music();
         while (1) {
             if (mq_get(&message)) {
                 if (msg_get_event(message) == M_KEY_DOWN) {
                     memset(leds, 0, 32);
-                    memset(board, 0, 32);
                     HTsendscreen();
                     break;
                 }
@@ -510,7 +504,8 @@ int main(void)
                         action = 2;
                     }
                     else if (action == 2) { /* show score */
-                        memcpy(leds, board, 32);
+                        memset(leds, 0, 32);
+                        render_number(score, leds);
                         action = 0;
                     }
 
@@ -530,6 +525,7 @@ int main(void)
         shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
         memcpy(shape, shapes[shape_selection][shape_rotation], 4);
         offset_shape(shape, shape_offset);
+        overlay_shape(leds, shape, shape_top);
 
         set_timer(INITIAL_DROP_INTERVAL, 0, true);
 
@@ -570,15 +566,19 @@ int main(void)
             }
 
             if (action == DROP) {
-                if (test_collision(board, shape, shape_top + 1)) {
+                overlay_shape(leds, shape, shape_top);
+                
+                if (test_collision(leds, shape, shape_top + 1)) {
                     uint8_t rows_cleared;
 
                     if (shape_top == 0)
                         // Game over
                         break;
 
+                    overlay_shape(leds, shape, shape_top);
+
                     flash_full_rows();
-                    rows_cleared = collapse_full_rows(leds, board);
+                    rows_cleared = collapse_full_rows(leds);
                     score += row_scores[rows_cleared];
                     lines += rows_cleared;
                     set_timer(0, INITIAL_DROP_INTERVAL - ((lines / 10) * DROP_INTERVAL_INCREMENT), true);
@@ -595,7 +595,7 @@ int main(void)
                     shape_top++;
                 }
 
-                overlay_shape(board, leds, shape, shape_top);
+                overlay_shape(leds, shape, shape_top);
                 HTsendscreen();
             }
 
@@ -631,14 +631,16 @@ int main(void)
                 memcpy(proposed_shape, shapes[shape_selection][proposed_shape_rotation], 4);
                 offset_shape(proposed_shape, proposed_shape_offset);
 
-                if (!test_collision(board, proposed_shape, shape_top)) {
+                overlay_shape(leds, shape, shape_top);
+
+                if (!test_collision(leds, proposed_shape, shape_top)) {
                     shape_offset = proposed_shape_offset;
                     shape_rotation = proposed_shape_rotation;
                     memcpy(shape, proposed_shape, 4);
                     shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
                 }
 
-                overlay_shape(board, leds, shape, shape_top);
+                overlay_shape(leds, shape, shape_top);
                 HTsendscreen();
             }
         }

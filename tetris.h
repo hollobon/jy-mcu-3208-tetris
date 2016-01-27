@@ -49,8 +49,6 @@ uint8_t shapes[7][4][4] = {
      {0b11000000, 0b01100000, 0b00000000, 0b00000000}},
 };
 
-void overlay_shape(uint8_t src[32], uint8_t dest[32], uint8_t shape[4], uint8_t shape_top);
-
 void offset_shape(uint8_t shape[4], uint8_t n);
 
 #endif  /* TETRIS_H */
