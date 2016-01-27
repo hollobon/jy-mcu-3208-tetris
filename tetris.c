@@ -245,9 +245,9 @@ void flash_full_rows(void)
 /* Copy the source board to the destination, omitting any complete rows
  * Returns the number of completed rows that were collapsed
  */
-int collapse_full_rows(uint8_t src[32], uint8_t dest[32])
+uint8_t collapse_full_rows(uint8_t src[32], uint8_t dest[32])
 {
-    int src_index, dest_index;
+    int8_t src_index, dest_index;
 
     dest_index = 31;
     for (src_index = 31; src_index >= 0; src_index--) {
