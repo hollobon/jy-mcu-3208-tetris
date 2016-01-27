@@ -479,8 +479,6 @@ int main(void)
         while (1) {
             if (mq_get(&message)) {
                 if (msg_get_event(message) == M_KEY_DOWN) {
-                    memset(leds, 0, 32);
-                    HTsendscreen();
                     break;
                 }
                 else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 1) {
@@ -525,6 +523,7 @@ int main(void)
         shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
         memcpy(shape, shapes[shape_selection][shape_rotation], 4);
         offset_shape(shape, shape_offset);
+        memset(leds, 0, 32);
         overlay_shape(leds, shape, shape_top);
 
         set_timer(INITIAL_DROP_INTERVAL, 0, true);
