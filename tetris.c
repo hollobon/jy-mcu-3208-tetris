@@ -520,7 +520,7 @@ int main(void)
         new_high_score = false;
         shape_top = 0;
         shape_offset = 3;
-        shape_rotation = rand() % 4;
+        shape_rotation = rand() & 3;
         shape_selection = rand() % 7;
         shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
         memcpy(shape, shapes[shape_selection][shape_rotation], 4);
@@ -585,7 +585,7 @@ int main(void)
 
                     shape_top = 0;
                     shape_offset = 3;
-                    shape_rotation = rand() % 4;
+                    shape_rotation = rand() & 3;
                     shape_selection = rand() % 7;
                     shape_width = get_shape_width(shapes[shape_selection][shape_rotation]);
                     memcpy(shape, shapes[shape_selection][shape_rotation], 4);
@@ -620,7 +620,7 @@ int main(void)
                 break;
 
             case ROTATE:
-                proposed_shape_rotation = (shape_rotation + 1) % 4;
+                proposed_shape_rotation = (shape_rotation + 1) & 3;
                 proposed_shape_offset = shape_offset;
                 if (shape_offset + get_shape_width(shapes[shape_selection][proposed_shape_rotation]) < 9)
                     update_shape = true;
