@@ -454,9 +454,12 @@ int main(void)
     message_t message;
     uint8_t action;
     uint8_t key1_autorepeat = false;
-    uint32_t score = 0, high_score = 0, lines = 0;
+    uint32_t score = 0, high_score = 0;
     bool new_high_score = true;
     char high_score_name[4];
+    uint8_t rows_cleared;
+    uint8_t drop_interval_line_count = 0;
+    uint16_t drop_interval = INITIAL_DROP_INTERVAL;
 
     HTpinsetup();
     HTsetup();
@@ -526,7 +529,7 @@ int main(void)
         memset(leds, 0, 32);
         overlay_shape(leds, shape, shape_top);
 
-        set_timer(INITIAL_DROP_INTERVAL, 0, true);
+        set_timer(drop_interval, 0, true);
 
         // Main game loop
         while (1) {
@@ -569,8 +572,6 @@ int main(void)
                 overlay_shape(leds, shape, shape_top);
                 
                 if (test_collision(leds, shape, shape_top + 1)) {
-                    uint8_t rows_cleared;
-
                     if (shape_top == 0)
                         // Game over
                         break;
@@ -581,9 +582,12 @@ int main(void)
                     flash_full_rows();
                     rows_cleared = collapse_full_rows(leds);
                     score += row_scores[rows_cleared];
-                    lines += rows_cleared;
-                    set_timer(INITIAL_DROP_INTERVAL - ((lines / 10) * DROP_INTERVAL_INCREMENT), 0, true);
-
+                    drop_interval_line_count += rows_cleared;
+                    if (drop_interval_line_count >= 10 && drop_interval > MIN_DROP_INTERVAL) {
+                        drop_interval -= DROP_INTERVAL_INCREMENT;
+                        drop_interval_line_count -= 10;
+                        set_timer(drop_interval, 0, true);
+                    }
                     shape_top = 0;
                     shape_offset = 3;
                     shape_rotation = rand() & 3;
