@@ -21,16 +21,31 @@
 #include "tetris.h"
 #include "numbers.h"
 #include "letters.h"
+#include "music.h"
+#include "timers.h"
 
 #define M_KEY_DOWN 8
 #define M_KEY_UP 9
 #define M_KEY_REPEAT 10
 
+#define DEBOUNCE_TIME 10
+
+#define MOVE_LEFT 1
+#define MOVE_RIGHT 2
+#define ROTATE 3
+#define DROP 4
+
+#define INITIAL_DROP_INTERVAL 600
+#define MIN_DROP_INTERVAL 150
+#define DROP_INTERVAL_INCREMENT 30
+#define LINES
+
 #define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
 
 uint32_t EEMEM high_score_address = 0;
 uint8_t EEMEM high_score_name_address[3] = "   ";
-volatile uint16_t clock_count = 0;
+
+uint8_t row_scores[] = {0, 1, 4, 8, 16};
 
 void set_up_keys(void)
 {
@@ -43,7 +58,7 @@ void set_up_keys(void)
     DDRC |= 1 << 5;
 }
 
-void set_up_timer(void)
+void set_up_timers(void)
 {
     cli();                      /* disable interrupts */
 
@@ -72,54 +87,6 @@ void set_up_rand(void)
     srand(seed_value);
     eeprom_write_word(&rand_seed, seed_value + 1);
 }
-
-#define MAX_TIMERS 2
-
-#if MAX_TIMERS > 32
-#error MAX_TIMERS must be <= 32
-typedef uint32_t timer_bitfield;
-#elif MAX_TIMERS > 16
-typedef uint32_t timer_bitfield;
-#elif MAX_TIMERS > 8
-typedef uint16_t timer_bitfield;
-#else
-typedef uint8_t timer_bitfield;
-#endif
-
-typedef struct {
-    uint16_t ms;
-    uint16_t end;
-} timer_t;
-timer_t timers[MAX_TIMERS];
-timer_bitfield timers_active = 0;
-timer_bitfield timers_recur = 0;
-
-void set_timer(uint16_t ms, uint8_t n, bool recur)
-{
-    ATOMIC_BLOCK(ATOMIC_FORCEON)
-    {
-        if (recur)
-            timers_recur |= 1 << n;
-        else
-            timers_recur &= ~(1 << n);
-
-        timers[n].ms = ms;
-        timers[n].end = clock_count + ms;
-        timers_active |= 1 << n;
-    }
-}
-
-void stop_timer(uint8_t n)
-{
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    {
-        timers_active &= ~(1 << n);
-    }
-}
-
-#define DEBOUNCE_TIME 10
-
-#include "tune.h"
 
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
 ISR (TIMER1_CAPT_vect, ISR_NOBLOCK)
@@ -163,17 +130,7 @@ ISR (TIMER1_CAPT_vect, ISR_NOBLOCK)
         }
     }
 
-    for (int timer = 0; timer < MAX_TIMERS; timer++) {
-        if (timers_active & (1 << timer) && clock_count == timers[timer].end) {
-            if (!(timers_recur & (1 << timer)))
-                stop_timer(timer);
-            else
-                timers[timer].end = clock_count + timers[timer].ms;
-            mq_put(msg_create(M_TIMER, timer));
-        }
-    }
-
-    clock_count++;
+    handle_timers();
 }
 
 /* Interrupt handler for timer2. Bitbangs a square wave for audio */
@@ -399,49 +356,6 @@ void read_name(char* name)
     HTsendscreen();
 }
 
-uint8_t tune_location = 0;
-
-void stop_music(void)
-{
-    // no interrupt on timer 2 compare match
-    TIMSK &= ~_BV(OCIE2);
-    stop_timer(1);
-}
-
-void start_music(void)
-{
-    tune_location = 0;
-
-    // interrupt on timer 2 compare match
-    TIMSK |= _BV(OCIE2);
-
-    set_timer(100, 1, false);
-}
-
-void handle_music(void)
-{
-    note n;
-    n.decode = pgm_read_byte(&(tune[tune_location]));
-
-    OCR2 = note_clocks[n.note];
-    set_timer((n.time + 1) * 2 * NOTE_LENGTH_MULTIPLIER, 1, false);
-
-    tune_location++;
-    if (tune_location > TUNE_LENGTH)
-        tune_location = 0;
-}
-
-#define MOVE_LEFT 1
-#define MOVE_RIGHT 2
-#define ROTATE 3
-#define DROP 4
-
-#define INITIAL_DROP_INTERVAL 600
-#define MIN_DROP_INTERVAL 150
-#define DROP_INTERVAL_INCREMENT 30
-
-uint8_t row_scores[] = {0, 1, 4, 8, 16};
-
 int main(void)
 {
     uint8_t shape_top;
@@ -464,10 +378,10 @@ int main(void)
     HTpinsetup();
     HTsetup();
     set_up_keys();
-    set_up_timer();
+    set_up_timers();
     set_up_rand();
+    init_timers();
     HTbrightness(1);
-    memset(timers, 0, MAX_TIMERS);
 
     score = eeprom_read_dword(&high_score_address);
     eeprom_read_block(high_score_name, &high_score_name_address, 3);

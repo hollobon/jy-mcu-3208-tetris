@@ -4,7 +4,7 @@ MCU = atmega8
 
 TARGET = tetris
 
-SRC = tetris.c mq.c ht1632c.c
+SRC = tetris.c mq.c ht1632c.c music.c timers.c
 
 all: tune.h
 
