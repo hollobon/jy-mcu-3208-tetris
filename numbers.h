@@ -1,61 +1,62 @@
 #ifndef NUMBERS_H
 #define NUMBERS_H
 
+#include <avr/pgmspace.h>
 #include "character.h"
 
-uint8_t _zero[] = {
+const uint8_t _zero[] PROGMEM = {
     0b01111110,
     0b01000010,
     0b01111110
 };
 
-uint8_t _one[] = {
+const uint8_t _one[] PROGMEM = {
     0b01111110
 };
 
-uint8_t _two[] = {
+const uint8_t _two[] PROGMEM = {
     0b01111010,
     0b01001010,
     0b01001110,
 };
 
-uint8_t _three[] = {
+const uint8_t _three[] PROGMEM = {
     0b01001010,
     0b01001010,
     0b01111110,
 };
 
-uint8_t _four[] = {
+const uint8_t _four[] PROGMEM = {
     0b00011110,
     0b00010000,
     0b01111110,
 };
 
-uint8_t _five[] = {
+const uint8_t _five[] PROGMEM = {
     0b01001110,
     0b01001010,
     0b01111010,
 };
 
-uint8_t _six[] = {
+const uint8_t _six[] PROGMEM = {
     0b01111110,
     0b01001010,
     0b01111010,
 };
 
-uint8_t _seven[] = {
+const uint8_t _seven[] PROGMEM = {
     0b00000010,
     0b00000010,
     0b01111110,
 };
 
-uint8_t _eight[] = {
+const uint8_t _eight[] PROGMEM = {
     0b01111110,
     0b01001010,
     0b01111110,
 };
 
-uint8_t _nine[] = {
+const uint8_t _nine[] PROGMEM = {
     0b01001110,
     0b01001010,
     0b01111110,

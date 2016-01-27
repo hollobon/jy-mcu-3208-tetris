@@ -1,81 +1,82 @@
 #ifndef LETTERS_H
 #define LETTERS_H
 
+#include <avr/pgmspace.h>
 #include "character.h"
 
-uint8_t _a[] = {
+const uint8_t _a[] PROGMEM = {
     0b01111100,
     0b00010010,
     0b01111100,
 };
 
-uint8_t _b[] = {
+const uint8_t _b[] PROGMEM = {
     0b01111110,
     0b01001010,
     0b00110100,
 };
 
-uint8_t _c[] = {
+const uint8_t _c[] PROGMEM = {
     0b00111100,
     0b01000010,
     0b01000010,
 };
 
-uint8_t _d[] = {
+const uint8_t _d[] PROGMEM = {
     0b01111110,
     0b01000010,
     0b00111100,
 };
 
-uint8_t _e[] = {
+const uint8_t _e[] PROGMEM = {
     0b01111110,
     0b01001010,
     0b01001010,
 };
 
-uint8_t _f[] = {
+const uint8_t _f[] PROGMEM = {
     0b01111110,
     0b00001010,
     0b00001010,
 };
 
-uint8_t _g[] = {
+const uint8_t _g[] PROGMEM = {
     0b00111100,
     0b01000010,
     0b00111010,
 };
 
-uint8_t _h[] = {
+const uint8_t _h[] PROGMEM = {
     0b01111110,
     0b00001000,
     0b01111110,
 };
 
-uint8_t _i[] = {
+const uint8_t _i[] PROGMEM = {
     0b01000010,
     0b01111110,
     0b01000010,
 };
 
-uint8_t _j[] = {
+const uint8_t _j[] PROGMEM = {
     0b00100010,
     0b01000010,
     0b00111110,
 };
 
-uint8_t _k[] = {
+const uint8_t _k[] PROGMEM = {
     0b01111110,
     0b00001000,
     0b01110110,
 };
 
-uint8_t _l[] = {
+const uint8_t _l[] PROGMEM = {
     0b01111110,
     0b01000000,
     0b01000000,
 };
 
-uint8_t _m[] = {
+const uint8_t _m[] PROGMEM = {
     0b01111110,
     0b00001100,
     0b00010000,
@@ -83,62 +84,62 @@ uint8_t _m[] = {
     0b01111110,
 };
 
-uint8_t _n[] = {
+const uint8_t _n[] PROGMEM = {
     0b01111110,
     0b00001000,
     0b00010000,
     0b01111110,
 };
 
-uint8_t _o[] = {
+const uint8_t _o[] PROGMEM = {
     0b00111100,
     0b01000010,
     0b00111100,
 };
 
-uint8_t _p[] = {
+const uint8_t _p[] PROGMEM = {
     0b01111110,
     0b00001010,
     0b00001110,
 };
 
-uint8_t _q[] = {
+const uint8_t _q[] PROGMEM = {
     0b10111100,
     0b01000010,
     0b00111100,
 };
 
-uint8_t _r[] = {
+const uint8_t _r[] PROGMEM = {
     0b01111110,
     0b00001010,
     0b01110100,
 };
 
-uint8_t _s[] = {
+const uint8_t _s[] PROGMEM = {
     0b01000100,
     0b01001010,
     0b00110010,
 };
 
-uint8_t _t[] = {
+const uint8_t _t[] PROGMEM = {
     0b00000010,
     0b01111110,
     0b00000010,
 };
 
-uint8_t _u[] = {
+const uint8_t _u[] PROGMEM = {
     0b00111110,
     0b01000000,
     0b00111110,
 };
 
-uint8_t _v[] = {
+const uint8_t _v[] PROGMEM = {
     0b00011110,
     0b01100000,
     0b00011110,
 };
 
-uint8_t _w[] = {
+const uint8_t _w[] PROGMEM = {
     0b00111110,
     0b01000000,
     0b00110000,
@@ -146,25 +147,25 @@ uint8_t _w[] = {
     0b00111110,
 };
 
-uint8_t _x[] = {
+const uint8_t _x[] PROGMEM = {
     0b01100110,
     0b00011000,
     0b01100110,
 };
 
-uint8_t _y[] = {
+const uint8_t _y[] PROGMEM = {
     0b00000110,
     0b01111000,
     0b00000110,
 };
 
-uint8_t _z[] = {
+const uint8_t _z[] PROGMEM = {
     0b01100010,
     0b01011010,
     0b01000110,
 };
 
-character letters[] = {
+const character letters[] = {
     CHARDEF(_a),
     CHARDEF(_b),
     CHARDEF(_c),

@@ -298,7 +298,7 @@ bool render_number(uint32_t number, byte board[32])
         number = q.quot;
         c = &numbers[q.rem];
         for (i = c->columns - 1; i >= 0; i--) {
-            board[pos--] = c->bitmap[i];
+            board[pos--] = pgm_read_byte(&(c->bitmap[i]));
         }
         pos--;
     } while (number);
@@ -318,7 +318,7 @@ bool render_string(const char* string, byte board[32])
         else {
             c = &letters[*string - 65];
             for (i = 0; i < c->columns; i++) {
-                board[pos++] = c->bitmap[i];
+                board[pos++] = pgm_read_byte(&(c->bitmap[i]));
                 if (pos > 31)
                     return false;
             }
