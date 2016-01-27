@@ -45,7 +45,7 @@
 uint32_t EEMEM high_score_address = 0;
 uint8_t EEMEM high_score_name_address[3] = "   ";
 
-uint8_t row_scores[] = {0, 1, 4, 8, 16};
+const uint8_t row_scores[] PROGMEM = {0, 1, 4, 8, 16};
 
 void set_up_keys(void)
 {
@@ -495,7 +495,7 @@ int main(void)
 
                     flash_full_rows();
                     rows_cleared = collapse_full_rows(leds);
-                    score += row_scores[rows_cleared];
+                    score += pgm_read_byte(&(row_scores[rows_cleared]));
                     drop_interval_line_count += rows_cleared;
                     if (drop_interval_line_count >= 10 && drop_interval > MIN_DROP_INTERVAL) {
                         drop_interval -= DROP_INTERVAL_INCREMENT;
