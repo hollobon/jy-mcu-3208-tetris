@@ -305,10 +305,10 @@ bool render_number(uint32_t number, byte board[32])
     return true;
 }
 
-bool render_string(char* string, byte board[32])
+bool render_string(const char* string, byte board[32])
 {
-    int pos = 1;
-    character *c;
+    uint8_t pos = 1, i;
+    const character *c;
     while (*string) {
         if (*string == ' ')
             pos += 3;
@@ -316,7 +316,7 @@ bool render_string(char* string, byte board[32])
             return false;
         else {
             c = &letters[*string - 65];
-            for (int i = 0; i < c->columns; i++) {
+            for (i = 0; i < c->columns; i++) {
                 board[pos++] = c->bitmap[i];
                 if (pos > 31)
                     return false;
