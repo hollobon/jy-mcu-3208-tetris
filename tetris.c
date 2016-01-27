@@ -274,16 +274,17 @@ uint8_t get_shape_width(const uint8_t shape[4])
 bool render_number(uint32_t number, byte board[32])
 {
     ldiv_t q;
-    character c;
-    int pos = 0;
+    const character *c;
+    uint8_t pos = 0;
+    int8_t i;
     uint32_t n = number;
 
     // calculate position of least significant digit
     do {
         q = ldiv(n, 10);
         n = q.quot;
-        c = numbers[q.rem];
-        pos += c.columns + 1;
+        c = &numbers[q.rem];
+        pos += c->columns + 1;
     } while (n);
     pos -= 1;
 
@@ -295,9 +296,9 @@ bool render_number(uint32_t number, byte board[32])
     do {
         q = ldiv(number, 10);
         number = q.quot;
-        c = numbers[q.rem];
-        for (int i = c.columns - 1; i >= 0; i--) {
-            board[pos--] = c.bitmap[i];
+        c = &numbers[q.rem];
+        for (i = c->columns - 1; i >= 0; i--) {
+            board[pos--] = c->bitmap[i];
         }
         pos--;
     } while (number);
