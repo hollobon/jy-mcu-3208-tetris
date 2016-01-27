@@ -287,13 +287,13 @@ bool render_string(const char* string, byte board[32])
     return true;
 }
 
-void read_name(char* name)
+void read_string(char* name, uint8_t length)
 {
     message_t message;
     uint8_t position = 0;
     char current_char = 'A';
     bool show_current_char = true;
-    memset(name, 0, 4);
+    memset(name, 0, length + 1);
     name[0] = 'A';
 
     memset(leds, 0, 32);
@@ -301,7 +301,7 @@ void read_name(char* name)
     HTsendscreen();
 
     set_timer(250, 0, true);
-    while (position < 3) {
+    while (position < length) {
         if (mq_get(&message)) {
             if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
                 if (show_current_char) {
@@ -338,7 +338,7 @@ void read_name(char* name)
             if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == 1) {
                 name[position] = current_char;
                 position++;
-                if (position < 3) {
+                if (position < length) {
                     current_char = 'A';
                     name[position] = current_char;
                     show_current_char = false;
@@ -569,7 +569,7 @@ int main(void)
 
         high_score = eeprom_read_dword(&high_score_address);
         if (score > high_score) {
-            read_name(high_score_name);
+            read_string(high_score_name, 3);
             eeprom_update_block(high_score_name, &high_score_name_address, 3);
             eeprom_write_dword(&high_score_address, score);
             new_high_score = true;
