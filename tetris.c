@@ -200,8 +200,7 @@ void flash_full_rows(void)
     }
 }
 
-/* Copy the source board to the destination, omitting any complete rows
- * Returns the number of completed rows that were collapsed
+/* Delete any completed lines, returning the number deleted.
  */
 uint8_t collapse_full_rows(uint8_t dest[32])
 {
@@ -291,31 +290,24 @@ bool render_string(const char* string, byte board[32])
 void read_string(char* name, uint8_t length)
 {
     message_t message;
-    uint8_t position = 0;
+    char* cursor = name;
     char current_char = 'A';
     bool show_current_char = true;
+    bool redraw = true;
     memset(name, 0, length + 1);
     name[0] = 'A';
 
-    memset(leds, 0, 32);
-    render_string(name, leds);
-    HTsendscreen();
-
     set_timer(250, 0, true);
-    while (position < length) {
+    while (length) {
         if (mq_get(&message)) {
             if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
-                if (show_current_char) {
-                    name[position] = current_char;
-                }
-                else {
-                    name[position] = 0;
-                }
+                if (show_current_char)
+                    *cursor = current_char;
+                else
+                    *cursor = 0;
 
                 show_current_char ^= true;
-                memset(leds, 0, 32);
-                render_string(name, leds);
-                HTsendscreen();
+                redraw = true;
             }
             else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
                 switch (msg_get_param(message)) {
@@ -328,27 +320,27 @@ void read_string(char* name, uint8_t length)
                         current_char++;
                     break;
                 }
-                name[position] = current_char;
+                *cursor = current_char;
                 show_current_char = false;
                 set_timer(250, 0, true);
+                redraw = true;
+            }
+            if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == 1) {
+                *cursor++ = current_char;
+                length--;
+                if (length) {
+                    current_char = 'A';
+                    *cursor = current_char;
+                    show_current_char = false;
+                    redraw = true;
+                }
+            }
 
+            if (redraw) {
                 memset(leds, 0, 32);
                 render_string(name, leds);
                 HTsendscreen();
-            }
-            if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == 1) {
-                name[position] = current_char;
-                position++;
-                if (position < length) {
-                    current_char = 'A';
-                    name[position] = current_char;
-                    show_current_char = false;
-                    set_timer(250, 0, true);
-
-                    memset(leds, 0, 32);
-                    render_string(name, leds);
-                    HTsendscreen();
-                }
+                redraw = false;
             }
         }
     }
