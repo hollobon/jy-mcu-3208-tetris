@@ -292,7 +292,6 @@ void read_string(char* name, uint8_t length)
     message_t message;
     char* cursor = name;
     char current_char = 'A';
-    bool show_current_char = true;
     bool redraw = true;
     memset(name, 0, length + 1);
     name[0] = 'A';
@@ -301,12 +300,11 @@ void read_string(char* name, uint8_t length)
     while (length) {
         if (mq_get(&message)) {
             if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
-                if (show_current_char)
-                    *cursor = current_char;
-                else
+                if (*cursor)
                     *cursor = 0;
+                else
+                    *cursor = current_char;
 
-                show_current_char ^= true;
                 redraw = true;
             }
             else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
@@ -321,17 +319,16 @@ void read_string(char* name, uint8_t length)
                     break;
                 }
                 *cursor = current_char;
-                show_current_char = false;
                 set_timer(250, 0, true);
                 redraw = true;
             }
             if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == 1) {
-                *cursor++ = current_char;
+                *cursor = current_char;
                 length--;
                 if (length) {
+                    cursor++;
                     current_char = 'A';
                     *cursor = current_char;
-                    show_current_char = false;
                     redraw = true;
                 }
             }
