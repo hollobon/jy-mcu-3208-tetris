@@ -82,6 +82,10 @@ void set_up_timers(void)
     sei();
 }
 
+/* Seed random number generator with a value from EEPROM, and update with a new seed
+ *
+ * If this wasn't done, the sequence of shapes would be identical after every reset.
+ */
 void set_up_rand(void)
 {
     static uint16_t EEMEM rand_seed;
@@ -296,10 +300,11 @@ void read_string(char* name, uint8_t length)
     char* cursor = name;
     char current_char = 'A';
     bool redraw = true;
-    memset(name, 0, length + 1);
-    name[0] = 'A';
 
+    memset(name, 0, length + 1);
+    *cursor = 'A';
     set_timer(250, 0, true);
+
     while (length) {
         if (mq_get(&message)) {
             if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
