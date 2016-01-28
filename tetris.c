@@ -44,6 +44,9 @@
 const uint8_t row_scores[] PROGMEM = {0, 1, 4, 8, 16};
 
 #define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
+#define KEY_LEFT 0
+#define KEY_MIDDLE 1
+#define KEY_RIGHT 2
 
 uint32_t EEMEM high_score_address = 0;
 uint8_t EEMEM high_score_name_address[3] = "   ";
@@ -309,11 +312,11 @@ void read_string(char* name, uint8_t length)
             }
             else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
                 switch (msg_get_param(message)) {
-                case 0:         /* left */
+                case KEY_LEFT:
                     if (current_char > 'A')
                         current_char--;
                     break;
-                case 2:         /* right */
+                case KEY_RIGHT:
                     if (current_char < 'Z')
                         current_char++;
                     break;
@@ -322,7 +325,7 @@ void read_string(char* name, uint8_t length)
                 set_timer(250, 0, true);
                 redraw = true;
             }
-            if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == 1) {
+            if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == KEY_MIDDLE) {
                 *cursor = current_char;
                 length--;
                 if (length) {
@@ -451,19 +454,19 @@ int main(void)
                 }
                 else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
                     switch (msg_get_param(message)) {
-                    case 0:
+                    case KEY_LEFT:
                         action = MOVE_LEFT;
                         break;
-                    case 2:
+                    case KEY_RIGHT:
                         action = MOVE_RIGHT;
                         break;
                     }
                 }
-                if (msg_get_event(message) == M_KEY_REPEAT && msg_get_param(message) == 1) {
+                if (msg_get_event(message) == M_KEY_REPEAT && msg_get_param(message) == KEY_MIDDLE) {
                     key1_autorepeat = true;
                     action = DROP;
                 }
-                else if (msg_get_event(message) == M_KEY_UP && msg_get_param(message) == 1) {
+                else if (msg_get_event(message) == M_KEY_UP && msg_get_param(message) == KEY_MIDDLE) {
                     if (key1_autorepeat)
                         key1_autorepeat = false;
                     else
