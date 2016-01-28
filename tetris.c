@@ -23,6 +23,7 @@
 #include "letters.h"
 #include "music.h"
 #include "timers.h"
+#include "lookup.h"
 
 #define M_KEY_DOWN 8
 #define M_KEY_UP 9
@@ -355,37 +356,35 @@ void read_string(char* name, uint8_t length)
     HTsendscreen();
 }
 
-// s = 16.0; print("{" + ", ".join("%d" % round(1 + (1 - cos(x / s * pi)) * 7) for x in range(int(s))) + "}")
-const uint8_t sin_16[] PROGMEM = {1, 1, 2, 2, 3, 4, 5, 7, 8, 9, 11, 12, 13, 14, 14, 15};
-static uint8_t fade_offset = 0;
+static uint8_t fade_value = 0;
 static bool do_fade_in;
 
 void handle_fade(void)
 {
-    HTbrightness(pgm_read_byte(&(sin_16[fade_offset])));
-    if ((do_fade_in && fade_offset == (sizeof(sin_16) - 1))
-        || (!do_fade_in && fade_offset == 0)) {
+    HTbrightness(cos_s16_r1_15(fade_value));
+    if ((do_fade_in && fade_value == 15)
+        || (!do_fade_in && fade_value == 0)) {
         stop_timer(2);
         mq_put(msg_create(M_FADE_COMPLETE, 0));
     }
     else {
         if (do_fade_in)
-            fade_offset++;
+            fade_value++;
         else
-            fade_offset--;
+            fade_value--;
     }
 }
 
 void fade_in(uint8_t speed)
 {
-    fade_offset = 0;
+    fade_value = 0;
     do_fade_in = true;
     set_timer(speed, 2, true);
 }
 
 void fade_out(uint8_t speed)
 {
-    fade_offset = sizeof(sin_16) - 1;
+    fade_value = 15;
     do_fade_in = false;
     set_timer(speed, 2, true);
 }
