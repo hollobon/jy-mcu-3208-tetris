@@ -27,6 +27,7 @@
 #define M_KEY_DOWN 8
 #define M_KEY_UP 9
 #define M_KEY_REPEAT 10
+#define M_FADE_COMPLETE 11
 
 #define DEBOUNCE_TIME 10
 
@@ -354,6 +355,41 @@ void read_string(char* name, uint8_t length)
     HTsendscreen();
 }
 
+// s = 16.0; print("{" + ", ".join("%d" % round(1 + (1 - cos(x / s * pi)) * 7) for x in range(int(s))) + "}")
+const uint8_t sin_16[] PROGMEM = {1, 1, 2, 2, 3, 4, 5, 7, 8, 9, 11, 12, 13, 14, 14, 15};
+static uint8_t fade_offset = 0;
+static bool do_fade_in;
+
+void handle_fade(void)
+{
+    HTbrightness(pgm_read_byte(&(sin_16[fade_offset])));
+    if ((do_fade_in && fade_offset == (sizeof(sin_16) - 1))
+        || (!do_fade_in && fade_offset == 0)) {
+        stop_timer(2);
+        mq_put(msg_create(M_FADE_COMPLETE, 0));
+    }
+    else {
+        if (do_fade_in)
+            fade_offset++;
+        else
+            fade_offset--;
+    }
+}
+
+void fade_in(uint8_t speed)
+{
+    fade_offset = 0;
+    do_fade_in = true;
+    set_timer(speed, 2, true);
+}
+
+void fade_out(uint8_t speed)
+{
+    fade_offset = sizeof(sin_16) - 1;
+    do_fade_in = false;
+    set_timer(speed, 2, true);
+}
+
 int main(void)
 {
     uint8_t shape_top;
@@ -364,7 +400,7 @@ int main(void)
     uint8_t shape[4], proposed_shape[4];
     bool update_shape;
     message_t message;
-    uint8_t action;
+    uint8_t action, next_action = 0;
     uint8_t key1_autorepeat = false;
     uint32_t score = 0, high_score = 0;
     bool new_high_score = true;
@@ -379,11 +415,16 @@ int main(void)
     set_up_timers();
     set_up_rand();
     init_timers();
-    HTbrightness(1);
 
     score = eeprom_read_dword(&high_score_address);
     eeprom_read_block(high_score_name, &high_score_name_address, 3);
     high_score_name[3] = 0;
+
+    #define A_SHOW_SCORE_TYPE 0
+    #define A_SHOW_HIGH_SCORE_NAME 1
+    #define A_SHOW_SCORE 2
+    #define A_FADE_IN 10
+    #define A_FADE_OUT 11
 
     while (1) {
         // Flash score / high score until a button is pressed
@@ -393,41 +434,69 @@ int main(void)
         start_music();
         while (1) {
             if (mq_get(&message)) {
-                if (msg_get_event(message) == M_KEY_DOWN) {
+                if (msg_get_event(message) == M_KEY_DOWN)
                     break;
-                }
-                else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 1) {
-                    handle_music();
-                }
-                else if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
-                    if (action == 0) { /* show "score" / "hi score" */
-                        memset(leds, 0, 32);
-                        if (new_high_score) {
-                            render_string("HI SCORE", leds);
-                            action = 1;
-                        }
-                        else {
-                            render_string("SCORE", leds);
-                            action = 2;
-                        }
-                    }
-                    else if (action == 1) { /* show high score name */
-                        memset(leds, 0, 32);
-                        render_string(high_score_name, leds);
-                        action = 2;
-                    }
-                    else if (action == 2) { /* show score */
-                        memset(leds, 0, 32);
-                        render_number(score, leds);
-                        action = 0;
-                    }
+                else switch (msg_get_event(message)) {
+                    case M_TIMER:
+                        switch (msg_get_param(message)) {
+                        case 0:
+                            switch (action) {
+                            case A_SHOW_SCORE_TYPE:
+                                memset(leds, 0, 32);
+                                if (new_high_score) {
+                                    render_string("HI SCORE", leds);
+                                    next_action = A_SHOW_HIGH_SCORE_NAME;
+                                }
+                                else {
+                                    render_string("SCORE", leds);
+                                    next_action = A_SHOW_SCORE;
+                                }
+                                action = A_FADE_IN;
+                                fade_in(20);
+                                break;
+                            case A_SHOW_HIGH_SCORE_NAME:
+                                memset(leds, 0, 32);
+                                render_string(high_score_name, leds);
+                                next_action = A_SHOW_SCORE;
+                                action = A_FADE_IN;
+                                fade_in(20);
+                                break;
+                            case A_SHOW_SCORE:
+                                memset(leds, 0, 32);
+                                render_number(score, leds);
+                                next_action = A_SHOW_SCORE_TYPE;
+                                action = A_FADE_IN;
+                                fade_in(20);
+                                break;
+                            case A_FADE_OUT:
+                                action = next_action;
+                                fade_out(20);
+                                break;
+                            }
 
-                    HTsendscreen();
-                }
+                            HTsendscreen();
+                            break;
+                        case 1:
+                            handle_music();
+                            break;
+                        case 2:
+                            handle_fade();
+                        }
+                        break;
+                    case M_FADE_COMPLETE:
+                        if (action == A_FADE_IN)
+                            action = A_FADE_OUT;
+                        else {
+                            set_timer(900, 0, true);
+                            mq_put(msg_create(M_TIMER, 0));
+                        }
+                        break;
+                    }
             }
         }
         stop_timer(0);
         stop_music();
+        HTbrightness(1);
 
         score = 0;
         new_high_score = false;
@@ -482,7 +551,7 @@ int main(void)
             if (action == DROP) {
                 // erase previous shape
                 overlay_shape(leds, shape, shape_top);
-                
+
                 if (test_collision(leds, shape, shape_top + 1)) {
                     if (shape_top == 0)
                         // Game over

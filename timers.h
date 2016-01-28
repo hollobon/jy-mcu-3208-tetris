@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_TIMERS 2
+#define MAX_TIMERS 3
 
 #ifndef MAX_TIMERS
 #error MAX_TIMERS is undefined
