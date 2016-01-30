@@ -112,9 +112,9 @@ ISR (TIMER1_CAPT_vect, ISR_NOBLOCK)
     for (int key = 0; key < 3; key++) {
         if (key_down(key)) {
             if (last_state[key] == up) {
-                state_change_clock[key] = clock_count;
                 last_state[key] = down;
                 steady_state[key] = false;
+                state_change_clock[key] = clock_count;
             }
             else if (clock_count - state_change_clock[key] > (key_repeating[key] ? repeat_subsequent_delay[key] : repeat_initial_delay[key])) {
                 state_change_clock[key] = clock_count;
