@@ -186,43 +186,54 @@ bool test_collision(const uint8_t board[32], const uint8_t shape[4], uint8_t lin
     return false;
 }
 
-void flash_full_rows(void)
+uint8_t collapse_full_rows(void)
 {
     int row;
-    uint8_t flash_count;
-    uint32_t flash_rows = 0;
+    int8_t time_index;
+    uint32_t full_rows = 0;
+    message_t message;
 
     for (row = 0; row < 32; row++) {
         if (leds[row] == 0xff)
-            flash_rows |= 1UL << row;
+            full_rows |= 1UL << row;
     }
 
-    if (flash_rows) {
-        for (flash_count = 0; flash_count < 4; flash_count++) {
-            for (row = 0; row < 32; row++) {
-                if (flash_rows & (1UL << row))
-                    leds[row] ^= 0xFF;
+    if (full_rows) {
+        time_index = 15;
+        goto start;
+        while (time_index > 0) {
+            if (mq_get(&message)) {
+                if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
+                start:
+                    for (row = 0; row < 32; row++) {
+                        if (full_rows & (1UL << row)) {
+                            if (row & 1)
+                                leds[row] >>= 1;
+                            else
+                                leds[row] <<= 1;
+                        }
+                    }
+                    HTsendscreen();
+                    set_timer(cos_s16_r1_15(time_index) << 3, 0, false);
+                    time_index -= 2;
+                }
             }
-            HTsendscreen();
-            _delay_ms(100);
         }
-    }
-}
 
-/* Delete any completed lines, returning the number deleted.
- */
-uint8_t collapse_full_rows(uint8_t dest[32])
-{
-    int8_t src_index = 31, dest_index = 31;
-    for (; src_index >= 0; src_index--) {
-        if (dest[src_index] != 0xff)
-            dest[dest_index--] = dest[src_index];
-    }
-    src_index = dest_index + 1;
-    while (dest_index >= 0)
-        dest[dest_index--] = 0;
+        int8_t src_index = 31, dest_index = 31;
+        uint8_t full_row_count;
+        uint32_t row_mask = (1UL << 31);
+        for (; src_index >= 0; src_index--, row_mask >>= 1) {
+            if (!(full_rows & row_mask))
+                leds[dest_index--] = leds[src_index];
+        }
+        full_row_count = dest_index + 1;
+        while (dest_index >= 0)
+            leds[dest_index--] = 0;
 
-    return src_index;
+        return full_row_count;
+    }
+    return 0;
 }
 
 /* Get the "width" of a shape: the column number of the rightmost set pixel */
@@ -559,15 +570,14 @@ int main(void)
                     // draw back shape, as it has landed now
                     overlay_shape(leds, shape, shape_top);
 
-                    flash_full_rows();
-                    rows_cleared = collapse_full_rows(leds);
+                    rows_cleared = collapse_full_rows();
                     score += pgm_read_byte(&(row_scores[rows_cleared]));
                     drop_interval_line_count += rows_cleared;
                     if (drop_interval_line_count >= INTERVAL_DECREASE_LINES && drop_interval > MIN_DROP_INTERVAL) {
                         drop_interval -= DROP_INTERVAL_INCREMENT;
                         drop_interval_line_count -= INTERVAL_DECREASE_LINES;
-                        set_timer(drop_interval, 0, true);
                     }
+                    set_timer(drop_interval, 0, true);
                     shape_top = 0;
                     shape_offset = 3;
                     shape_rotation = rand() & 3;
