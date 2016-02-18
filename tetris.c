@@ -24,12 +24,7 @@
 #include "music.h"
 #include "lookup.h"
 
-#define M_KEY_DOWN 8
-#define M_KEY_UP 9
-#define M_KEY_REPEAT 10
 #define M_FADE_COMPLETE 11
-
-#define DEBOUNCE_TIME 10
 
 #define MOVE_LEFT 1
 #define MOVE_RIGHT 2
@@ -43,11 +38,6 @@
 #define INTERVAL_DECREASE_LINES 10
 
 const uint8_t row_scores[] PROGMEM = {0, 1, 4, 8, 16};
-
-#define key_down(n) ((PIND & (1 << ((n) + 5))) == 0)
-#define KEY_LEFT 0
-#define KEY_MIDDLE 1
-#define KEY_RIGHT 2
 
 uint32_t EEMEM high_score_address = 0;
 uint8_t EEMEM high_score_name_address[3] = "   ";
@@ -100,45 +90,7 @@ void set_up_rand(void)
 /* Interrupt handler for timer1. Polls keys and pushes events onto message queue. */
 ISR (TIMER1_CAPT_vect, ISR_NOBLOCK)
 {
-    typedef enum {down, up} key_state;
-    static key_state last_state[3] = {up, up, up};
-    static bool steady_state[3] = {true, true, true};
-    static bool key_repeating[3] = {false, false, false};
-    static uint16_t state_change_clock[3] = {0, 0, 0};
-    static uint16_t repeat_initial_delay[3] = {300, 300, 300};
-    static uint16_t repeat_subsequent_delay[3] = {200, 50, 200};
-
-    for (int key = 0; key < 3; key++) {
-        if (key_down(key)) {
-            if (last_state[key] == up) {
-                last_state[key] = down;
-                steady_state[key] = false;
-                state_change_clock[key] = clock_count;
-            }
-            else if (clock_count - state_change_clock[key] > (key_repeating[key] ? repeat_subsequent_delay[key] : repeat_initial_delay[key])) {
-                state_change_clock[key] = clock_count;
-                mq_put(msg_create(M_KEY_REPEAT, key));
-                key_repeating[key] = true;
-            }
-            else if (!steady_state[key] && clock_count - state_change_clock[key] > DEBOUNCE_TIME) {
-                mq_put(msg_create(M_KEY_DOWN, key));
-                steady_state[key] = true;
-            }
-        }
-        else {
-            if (last_state[key] == down) {
-                last_state[key] = up;
-                steady_state[key] = false;
-                state_change_clock[key] = clock_count;
-            }
-            else if (!steady_state[key] && clock_count - state_change_clock[key] > DEBOUNCE_TIME) {
-                mq_put(msg_create(M_KEY_UP, key));
-                steady_state[key] = true;
-                key_repeating[key] = false;
-            }
-        }
-    }
-
+    handle_keys();
     handle_timers();
 }
 
@@ -243,66 +195,6 @@ uint8_t get_shape_width(const uint8_t shape[4])
     for (all = shape[0] | shape[1] | shape[2] | shape[3]; all && !(all & 1); all >>= 1)
         bit--;
     return bit;
-}
-
-void read_string(char* name, uint8_t length)
-{
-    message_t message;
-    char* cursor = name;
-    char current_char = 'A';
-    bool redraw = true;
-
-    memset(name, 0, length + 1);
-    *cursor = 'A';
-    set_timer(250, 0, true);
-
-    while (length) {
-        if (mq_get(&message)) {
-            if (msg_get_event(message) == M_TIMER && msg_get_param(message) == 0) {
-                if (*cursor)
-                    *cursor = 0;
-                else
-                    *cursor = current_char;
-
-                redraw = true;
-            }
-            else if (msg_get_event(message) == M_KEY_DOWN || msg_get_event(message) == M_KEY_REPEAT) {
-                switch (msg_get_param(message)) {
-                case KEY_LEFT:
-                    if (current_char > 'A')
-                        current_char--;
-                    break;
-                case KEY_RIGHT:
-                    if (current_char < 'Z')
-                        current_char++;
-                    break;
-                }
-                *cursor = current_char;
-                set_timer(250, 0, true);
-                redraw = true;
-            }
-            if (msg_get_event(message) == M_KEY_DOWN && msg_get_param(message) == KEY_MIDDLE) {
-                *cursor = current_char;
-                length--;
-                if (length) {
-                    cursor++;
-                    current_char = 'A';
-                    *cursor = current_char;
-                    redraw = true;
-                }
-            }
-
-            if (redraw) {
-                memset(leds, 0, 32);
-                render_string(name, leds);
-                HTsendscreen();
-                redraw = false;
-            }
-        }
-    }
-    stop_timer(0);
-    memset(leds, 0, 32);
-    HTsendscreen();
 }
 
 static uint8_t fade_value = 0;
@@ -583,7 +475,7 @@ int main(void)
 
         high_score = eeprom_read_dword(&high_score_address);
         if (score > high_score) {
-            read_string(high_score_name, 3);
+            read_string(high_score_name, 3, 0);
             eeprom_update_block(high_score_name, &high_score_name_address, 3);
             eeprom_write_dword(&high_score_address, score);
             new_high_score = true;
