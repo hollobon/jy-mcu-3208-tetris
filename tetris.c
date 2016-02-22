@@ -42,17 +42,6 @@ const uint8_t row_scores[] PROGMEM = {0, 1, 4, 8, 16};
 uint32_t EEMEM high_score_address = 0;
 uint8_t EEMEM high_score_name_address[3] = "   ";
 
-void set_up_keys(void)
-{
-    /* Set high 3 bits of port D as input */
-    DDRD &= 0b00011111;
-
-    /* Turn on pull-up resistors on high 3 bits */
-    PORTD |= 0b11100000;
-
-    DDRC |= 1 << 5;
-}
-
 void set_up_timers(void)
 {
     cli();                      /* disable interrupts */
@@ -251,7 +240,7 @@ int main(void)
 
     HTpinsetup();
     HTsetup();
-    set_up_keys();
+    init_keys();
     set_up_timers();
     set_up_rand();
     init_timers();
