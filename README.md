@@ -1,5 +1,7 @@
 # Tetris for the JY-MCU 3208 "Lattice Clock"
 
+![](jy_mcu_3208_tetris.png)
+
 This is a Tetris-like falling blocks game for the JY-MCU 3208 "Lattice Clock" available from Deal
 Extreme, Banggood etc.
 
